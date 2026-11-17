@@ -1,0 +1,14 @@
+.secrets/
+.env
+.env.*
+!.env.example
+node_modules/
+.next/
+.venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+infra/outputs.json
+.DS_Store

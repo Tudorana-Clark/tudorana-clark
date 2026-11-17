@@ -1,0 +1,126 @@
+import "server-only";
+
+import { unstable_rethrow } from "next/navigation";
+
+import { env } from "./env";
+import type { ContactMessage, Content, ContentSummary, Kind, SeoSuggestion, Subscriber } from "./types";
+
+interface ContentList {
+  items: ContentSummary[];
+}
+
+/** Tag attached to every cached content read; publishing calls updateTag(CONTENT_TAG). */
+export const CONTENT_TAG = "content";
+const REVALIDATE_SECONDS = 300;
+
+export class ApiError extends Error {
+  constructor(
+    message: string,
+    readonly status: number,
+  ) {
+    super(message);
+    this.name = "ApiError";
+  }
+}
+
+interface Problem {
+  detail?: string;
+  title?: string;
+}
+
+async function request<T>(path: string, init: RequestInit & { next?: NextFetchRequestConfig; admin?: boolean; timeoutMs?: number } = {}): Promise<T> {
+  const { admin, headers, timeoutMs = env.API_TIMEOUT_MS, ...rest } = init;
+  const finalHeaders = new Headers(headers);
+  if (admin) finalHeaders.set("x-admin-key", env.ADMIN_API_KEY);
+  if (rest.body && !(rest.body instanceof FormData)) finalHeaders.set("content-type", "application/json");
+
+  let res: Response;
+  try {
+    res = await fetch(`${env.API_URL}${path}`, { ...rest, headers: finalHeaders, signal: AbortSignal.timeout(timeoutMs) });
+  } catch (err) {
+    unstable_rethrow(err); // let Next.js dynamic-rendering / redirect signals propagate
+    const timedOut = err instanceof DOMException && err.name === "TimeoutError";
+    console.error(JSON.stringify({ msg: "api_unreachable", path, timedOut, error: String(err) }));
+    throw new ApiError(timedOut ? "The server took too long to respond. Please try again." : "We couldn’t reach the server. Please try again.", 503);
+  }
+
+  if (res.status === 204) return undefined as T;
+  const body: unknown = await res.json().catch(() => null);
+  if (!res.ok) {
+    const problem = (body ?? {}) as Problem;
+    if (res.status >= 500) console.error(JSON.stringify({ msg: "api_error", path, status: res.status, detail: problem.detail }));
+    throw new ApiError(problem.detail ?? "Something went wrong. Please try again.", res.status);
+  }
+  return body as T;
+}
+
+// ---------- Public reads (cached, tag-invalidated) ----------
+
+const cached: RequestInit = { next: { revalidate: REVALIDATE_SECONDS, tags: [CONTENT_TAG] } };
+
+export async function listPublished(kind?: Kind, limit = 50): Promise<ContentSummary[]> {
+  const q = new URLSearchParams({ limit: String(limit) });
+  if (kind) q.set("kind", kind);
+  const data = await request<ContentList>(`/v1/content?${q}`, cached);
+  return data.items;
+}
+
+/** Returns null for a missing page so callers can render notFound(). */
+export async function getPublished(slug: string): Promise<Content | null> {
+  try {
+    return await request<Content>(`/v1/content/${encodeURIComponent(slug)}`, cached);
+  } catch (err) {
+    if (err instanceof ApiError && err.status === 404) return null;
+    throw err;
+  }
+}
+
+/**
+ * Listing read that degrades to an empty list instead of failing the whole page.
+ * Used for secondary sections (e.g. "Latest writing" on the home page).
+ */
+export async function listPublishedSafe(kind?: Kind, limit = 50): Promise<{ items: ContentSummary[]; failed: boolean }> {
+  try {
+    return { items: await listPublished(kind, limit), failed: false };
+  } catch (err) {
+    unstable_rethrow(err);
+    return { items: [], failed: true };
+  }
+}
+
+// ---------- Public writes ----------
+
+export function subscribe(email: string, source: string, clientIp: string) {
+  return request<{ ok: boolean; new: boolean }>("/v1/subscribe", {
+    method: "POST",
+    body: JSON.stringify({ email, source }),
+    headers: { "x-client-ip": clientIp },
+    cache: "no-store",
+  });
+}
+
+export function sendContact(input: { name: string; email: string; topic: string; message: string }, clientIp: string) {
+  return request<{ ok: boolean }>("/v1/contact", {
+    method: "POST",
+    body: JSON.stringify(input),
+    headers: { "x-client-ip": clientIp },
+    cache: "no-store",
+  });
+}
+
+// ---------- Admin (never cached) ----------
+
+export const admin = {
+  list: () => request<ContentList>("/v1/admin/content", { admin: true, cache: "no-store" }).then((d) => d.items),
+  get: (id: string) => request<Content>(`/v1/admin/content/${encodeURIComponent(id)}`, { admin: true, cache: "no-store" }),
+  create: (input: unknown) => request<Content>("/v1/admin/content", { method: "POST", body: JSON.stringify(input), admin: true, cache: "no-store" }),
+  update: (id: string, input: unknown) =>
+    request<Content>(`/v1/admin/content/${encodeURIComponent(id)}`, { method: "PUT", body: JSON.stringify(input), admin: true, cache: "no-store" }),
+  setStatus: (id: string, status: "publish" | "unpublish") =>
+    request<Content>(`/v1/admin/content/${encodeURIComponent(id)}/${status}`, { method: "POST", admin: true, cache: "no-store" }),
+  remove: (id: string) => request<void>(`/v1/admin/content/${encodeURIComponent(id)}`, { method: "DELETE", admin: true, cache: "no-store" }),
+  seo: (input: unknown) => request<SeoSuggestion>("/v1/admin/ai/seo", { method: "POST", body: JSON.stringify(input), admin: true, cache: "no-store", timeoutMs: 60_000 }),
+  upload: (form: FormData) => request<{ url: string; content_type: string; bytes: number }>("/v1/admin/media", { method: "POST", body: form, admin: true, cache: "no-store", timeoutMs: 30_000 }),
+  subscribers: () => request<Subscriber[]>("/v1/admin/subscribers", { admin: true, cache: "no-store" }),
+  messages: () => request<ContactMessage[]>("/v1/admin/messages", { admin: true, cache: "no-store" }),
+};

@@ -1,0 +1,43 @@
+[project]
+name = "tudoranaclark-api"
+version = "0.1.0"
+requires-python = ">=3.12"
+dependencies = [
+    "aiohttp>=3.14.5",
+    "azure-cosmos>=4.17.1",
+    "azure-identity>=1.27.0",
+    "azure-storage-blob>=12.31.1",
+    "email-validator>=2.4.0",
+    "fastapi>=0.163.1",
+    "httpx>=0.28.1",
+    "openai>=3.52.0",
+    "pydantic-settings>=2.16.3",
+    "python-multipart>=0.0.34",
+    "python-slugify>=9.2.0",
+    "uvicorn[standard]>=0.54.0",
+]
+
+[dependency-groups]
+dev = [
+    "mypy>=2.4.1",
+    "pytest>=9.2.0",
+    "pytest-asyncio>=1.5.0",
+    "ruff>=0.17.5",
+]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["."]
+
+[tool.ruff]
+line-length = 180
+target-version = "py312"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "B", "UP", "ASYNC", "S"]
+ignore = ["S101"]
+
+[tool.mypy]
+strict = true
+plugins = ["pydantic.mypy"]
+ignore_missing_imports = true
