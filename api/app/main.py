@@ -16,6 +16,8 @@ from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 
 from .ai import AzureSeoGenerator, OfflineSeoGenerator, SeoGenerator
+from .article_ai import ArticleWriter, AzureArticleWriter, OfflineArticleWriter
+from .articles import ArticleService
 from .config import Settings, get_settings
 from .covers import CoverService, ImageClient, MaiImageClient, OfflineImageClient, UnconfiguredImageClient, load_references
 from .deps import Container
@@ -23,8 +25,11 @@ from .errors import DomainError
 from .media import BlobMediaStore, MediaStore, MemoryMediaStore
 from .notify import Notifier, NullNotifier, ResendNotifier
 from .repository import CosmosRepository, MemoryRepository, Repository
-from .routers import admin, public
+from .routers import admin, public, studio
 from .service import ContentService
+from .studio import StudioService
+from .studio_ai import AzureStudioWriter, OfflineStudioWriter, StudioWriter
+from .studio_store import CosmosStudioStore, MemoryStudioStore, StudioStore
 
 
 class JsonFormatter(logging.Formatter):
@@ -57,8 +62,9 @@ def build_container(settings: Settings, credential: DefaultAzureCredential | Non
     if settings.storage_backend == "cosmos" and credential is not None:
         repo = CosmosRepository(settings.cosmos_endpoint, settings.cosmos_database, credential)
         media = BlobMediaStore(settings.storage_account, settings.media_container, settings.media_base_url, credential)
+        store: StudioStore = CosmosStudioStore(settings.cosmos_endpoint, settings.cosmos_database, credential)
     else:
-        repo, media = MemoryRepository(), MemoryMediaStore()
+        repo, media, store = MemoryRepository(), MemoryMediaStore(), MemoryStudioStore()
     if settings.openai_endpoint and credential is not None:
         ai = AzureSeoGenerator(
             settings.openai_endpoint,
@@ -71,6 +77,25 @@ def build_container(settings: Settings, credential: DefaultAzureCredential | Non
         )
     else:
         ai = OfflineSeoGenerator()
+    writer: StudioWriter
+    if settings.openai_endpoint and credential is not None:
+        writer = AzureStudioWriter(
+            settings.openai_endpoint, settings.openai_deployment, settings.openai_api_version, settings.openai_timeout_seconds, credential, settings.site_name, settings.author_name
+        )
+    else:
+        writer = OfflineStudioWriter()
+    article_writer: ArticleWriter
+    if settings.openai_endpoint and credential is not None:
+        article_writer = AzureArticleWriter(
+            settings.openai_endpoint,
+            settings.article_deployment or settings.openai_deployment,
+            settings.openai_api_version,
+            settings.article_timeout_seconds,
+            credential,
+            settings.author_name,
+        )
+    else:
+        article_writer = OfflineArticleWriter()
     images: ImageClient
     if settings.image_endpoint and credential is not None:
         images = MaiImageClient(settings.image_endpoint, settings.image_deployment, settings.cover_width, settings.cover_height, settings.image_timeout_seconds, credential)
@@ -82,7 +107,18 @@ def build_container(settings: Settings, credential: DefaultAzureCredential | Non
     covers = CoverService(images, ai, media, settings.cover_width, settings.cover_height, settings.cover_candidates, load_references())
     key = settings.resend_api_key.get_secret_value()
     notifier: Notifier = ResendNotifier(key, settings.notify_email, settings.notify_from, settings.site_url) if key else NullNotifier()
-    return Container(repo=repo, media=media, ai=ai, content=ContentService(repo, settings), notifier=notifier, covers=covers)
+    content = ContentService(repo, settings)
+    studio = StudioService(store, repo, writer)
+    return Container(
+        repo=repo,
+        media=media,
+        ai=ai,
+        content=content,
+        notifier=notifier,
+        covers=covers,
+        studio=studio,
+        articles=ArticleService(store, repo, content, studio, article_writer, settings),
+    )
 
 
 def create_app(settings: Settings | None = None) -> FastAPI:
@@ -107,6 +143,9 @@ def create_app(settings: Settings | None = None) -> FastAPI:
             await c.media.close()
             await c.ai.close()
             await c.covers.images.close()
+            await c.studio.writer.close()
+            await c.studio.store.close()
+            await c.articles.writer.close()
             await c.notifier.close()
             if credential is not None:
                 await credential.close()
@@ -162,6 +201,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
 
     app.include_router(public.router)
     app.include_router(admin.router)
+    app.include_router(studio.router)
     return app
 
 

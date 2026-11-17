@@ -39,6 +39,9 @@ class Settings(BaseSettings):
     openai_deployment: str = "gpt-4.1-mini"
     openai_api_version: str = "2024-10-21"
     openai_timeout_seconds: float = 45.0
+    # Long-form drafting and research. Empty uses openai_deployment; a larger model writes noticeably better articles.
+    article_deployment: str = ""
+    article_timeout_seconds: float = 120.0
 
     # AI cover images (MAI image model on a Microsoft Foundry resource). Empty endpoint uses offline placeholders.
     image_endpoint: str = ""  # https://<foundry-resource>.services.ai.azure.com

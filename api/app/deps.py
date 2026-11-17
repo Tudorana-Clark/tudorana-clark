@@ -11,6 +11,7 @@ from typing import Annotated
 from fastapi import Depends, Header, Request
 
 from .ai import SeoGenerator
+from .articles import ArticleService
 from .config import Settings
 from .covers import CoverService
 from .errors import DomainError, RateLimited
@@ -18,6 +19,7 @@ from .media import MediaStore
 from .notify import Notifier
 from .repository import Repository
 from .service import ContentService
+from .studio import StudioService
 
 
 @dataclass
@@ -28,6 +30,8 @@ class Container:
     content: ContentService
     notifier: Notifier
     covers: CoverService
+    studio: StudioService
+    articles: ArticleService
 
 
 def get_container(request: Request) -> Container:

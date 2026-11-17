@@ -166,3 +166,132 @@ export const emptySocial = (): SocialCopy => ({ linkedin: "", x: "", facebook: "
 export function blankInput(kind: Kind = "article"): ContentInput {
   return { kind, title: "", slug: null, subtitle: "", excerpt: "", body: "", category: kind === "article" ? "Artificial Intelligence" : "", tags: [], feature_image: null, cover: null, featured: false, seo: emptySeo(), social: emptySocial(), event: null, video: null, research: null };
 }
+
+// ---------- Content studio ----------
+
+export interface CoverBrief {
+  label: string;
+  scene: string;
+  why: string;
+}
+
+export interface VoiceProfile {
+  guide: string;
+  learned_from: number;
+  updated_at: string | null;
+}
+
+export interface SourceRef {
+  content_id: string;
+  kind: Kind;
+  title: string;
+  path: string;
+}
+
+export interface Idea {
+  id: string;
+  text: string;
+  angle: string;
+  source: SourceRef | null;
+  used_by: string | null;
+  created_at: string;
+}
+
+export type PostStatus = "draft" | "ready" | "posted";
+export type PostVisual = "none" | "quote" | "image";
+
+export interface PostCopy {
+  linkedin: string;
+  x: string;
+  hook: string;
+}
+
+export interface PostInput extends PostCopy {
+  seed: string;
+  source: SourceRef | null;
+  idea_id: string | null;
+  visual: PostVisual;
+  image: Image | null;
+  cover: CoverInfo | null;
+  status: PostStatus;
+  role?: string;
+  planned_for?: string | null;
+}
+
+export interface Post extends PostInput {
+  id: string;
+  created_at: string;
+  updated_at: string;
+  posted_at: string | null;
+}
+
+export function blankPost(seed = "", source: SourceRef | null = null, ideaId: string | null = null): PostInput {
+  return { seed, source, idea_id: ideaId, linkedin: "", x: "", hook: "", visual: "quote", image: null, cover: null, status: "draft" };
+}
+
+// ---------- Article workbench ----------
+
+export interface Playbook {
+  rules: string;
+  updated_at: string | null;
+}
+
+export interface OutlineSection {
+  key: string;
+  title: string;
+  purpose: string;
+  research: string;
+}
+
+export interface ArticleSource {
+  id: string;
+  title: string;
+  publisher: string;
+  url: string;
+  published: string;
+  sponsor: string;
+  finding: string;
+  section: string;
+  selected: boolean;
+  added_by: "research" | "author";
+}
+
+export interface ClaimCheck {
+  claim: string;
+  status: "sourced" | "unsourced" | "mismatch" | "experience";
+  source_url: string;
+  note: string;
+}
+
+export interface ArticleCheck {
+  word_count: number;
+  within_length: boolean;
+  claims: ClaimCheck[];
+  voice_issues: string[];
+  guardrail_issues: string[];
+  has_field_story: boolean;
+  unmatched_numbers: string[];
+  verdict: string;
+  checked_at: string;
+}
+
+export interface ArticleWorkInput {
+  insight: string;
+  angle: string;
+  headline: string;
+  headline_options: string[];
+  outline: OutlineSection[];
+  sources: ArticleSource[];
+  field_notes: string;
+  source_ref: SourceRef | null;
+  idea_id: string | null;
+}
+
+export interface ArticleWork extends ArticleWorkInput {
+  id: string;
+  content_id: string | null;
+  check: ArticleCheck | null;
+  distributed: string[];
+  created_at: string;
+  updated_at: string;
+}

@@ -3,7 +3,7 @@ import "server-only";
 import { unstable_rethrow } from "next/navigation";
 
 import { env } from "./env";
-import type { ContactMessage, Content, ContentSummary, CoverResult, Kind, SeoSuggestion, Subscriber } from "./types";
+import type { ArticleWork, ContactMessage, Content, ContentSummary, CoverBrief, CoverResult, Idea, Kind, Playbook, Post, PostCopy, SeoSuggestion, Subscriber, VoiceProfile } from "./types";
 
 interface ContentList {
   items: ContentSummary[];
@@ -125,4 +125,40 @@ export const admin = {
   upload: (form: FormData) => request<{ url: string; content_type: string; bytes: number }>("/v1/admin/media", { method: "POST", body: form, admin: true, cache: "no-store", timeoutMs: 30_000 }),
   subscribers: () => request<Subscriber[]>("/v1/admin/subscribers", { admin: true, cache: "no-store" }),
   messages: () => request<ContactMessage[]>("/v1/admin/messages", { admin: true, cache: "no-store" }),
+};
+
+// ---------- Content studio (never cached) ----------
+
+const S = "/v1/admin/studio";
+const json = (method: string, body: unknown, timeoutMs?: number) => ({ method, body: JSON.stringify(body), admin: true, cache: "no-store" as const, timeoutMs });
+const get = { admin: true, cache: "no-store" as const };
+
+export const studio = {
+  coverBriefs: (input: unknown) => request<{ briefs: CoverBrief[] }>(`${S}/cover-briefs`, json("POST", input, 60_000)),
+  voice: () => request<VoiceProfile>(`${S}/voice`, get),
+  saveVoice: (guide: string) => request<VoiceProfile>(`${S}/voice`, json("PUT", { guide })),
+  learnVoice: () => request<{ guide: string; learned_from: number }>(`${S}/voice/learn`, { method: "POST", admin: true, cache: "no-store", timeoutMs: 120_000 }),
+  ideas: () => request<Idea[]>(`${S}/ideas`, get),
+  addIdea: (text: string) => request<Idea>(`${S}/ideas`, json("POST", { text })),
+  mineIdeas: () => request<{ added: number; scanned: number; remaining: number }>(`${S}/ideas/mine`, { method: "POST", admin: true, cache: "no-store", timeoutMs: 180_000 }),
+  deleteIdea: (id: string) => request<void>(`${S}/ideas/${encodeURIComponent(id)}`, { method: "DELETE", admin: true, cache: "no-store" }),
+  posts: () => request<Post[]>(`${S}/posts`, get),
+  post: (id: string) => request<Post>(`${S}/posts/${encodeURIComponent(id)}`, get),
+  createPost: (input: unknown) => request<Post>(`${S}/posts`, json("POST", input)),
+  updatePost: (id: string, input: unknown) => request<Post>(`${S}/posts/${encodeURIComponent(id)}`, json("PUT", input)),
+  deletePost: (id: string) => request<void>(`${S}/posts/${encodeURIComponent(id)}`, { method: "DELETE", admin: true, cache: "no-store" }),
+  write: (input: unknown) => request<PostCopy>(`${S}/posts/write`, json("POST", input, 60_000)),
+  playbook: () => request<Playbook>(`${S}/playbook`, get),
+  savePlaybook: (rules: string) => request<Playbook>(`${S}/playbook`, json("PUT", { rules })),
+  articles: () => request<ArticleWork[]>(`${S}/articles`, get),
+  article: (id: string) => request<ArticleWork>(`${S}/articles/${encodeURIComponent(id)}`, get),
+  createArticle: (input: unknown) => request<ArticleWork>(`${S}/articles`, json("POST", input)),
+  updateArticle: (id: string, input: unknown) => request<ArticleWork>(`${S}/articles/${encodeURIComponent(id)}`, json("PUT", input)),
+  deleteArticle: (id: string) => request<void>(`${S}/articles/${encodeURIComponent(id)}`, { method: "DELETE", admin: true, cache: "no-store" }),
+  // AI steps: web research and drafting can each take a minute or two.
+  outline: (id: string) => request<ArticleWork>(`${S}/articles/${encodeURIComponent(id)}/outline`, json("POST", {}, 120_000)),
+  research: (id: string, input: { section: string; query: string }) => request<{ work: ArticleWork; added: number; skipped: number }>(`${S}/articles/${encodeURIComponent(id)}/research`, json("POST", input, 180_000)),
+  draft: (id: string) => request<{ work: ArticleWork; content: Content }>(`${S}/articles/${encodeURIComponent(id)}/draft`, json("POST", {}, 180_000)),
+  check: (id: string) => request<ArticleWork>(`${S}/articles/${encodeURIComponent(id)}/check`, json("POST", {}, 150_000)),
+  distribute: (id: string) => request<Post[]>(`${S}/articles/${encodeURIComponent(id)}/distribute`, json("POST", {}, 120_000)),
 };

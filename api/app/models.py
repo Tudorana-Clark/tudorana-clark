@@ -2,7 +2,7 @@
 
 from datetime import UTC, datetime
 from enum import StrEnum
-from typing import Annotated
+from typing import Annotated, Literal
 
 from pydantic import BaseModel, ConfigDict, EmailStr, Field, HttpUrl, StringConstraints, field_validator
 
@@ -256,3 +256,236 @@ class Problem(BaseModel):
     title: str
     detail: str
     status: int
+
+
+# ---------- Content studio: cover briefs, voice, ideas, short-form posts ----------
+
+LongText = Annotated[str, StringConstraints(strip_whitespace=True, max_length=4000)]
+
+
+class CoverBriefRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    kind: Kind
+    title: Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=200)]
+    body: Annotated[str, StringConstraints(max_length=200_000)] = ""
+    category: ShortText = ""
+
+
+class CoverBrief(BaseModel):
+    label: str  # 2-5 word name for the option
+    scene: str  # the drawable scene that will be rendered as-is
+    why: str  # one line on how it expresses the piece
+
+
+class CoverBriefs(BaseModel):
+    briefs: list[CoverBrief]
+
+
+class VoiceProfile(BaseModel):
+    """The author's tone of voice, learned from published work and editable by hand."""
+
+    model_config = ConfigDict(extra="ignore")
+    id: str = "voice"
+    type: str = "voice"
+    guide: LongText = ""
+    learned_from: int = 0
+    updated_at: datetime | None = None
+
+
+class VoiceIn(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    guide: LongText
+
+
+class VoiceDraft(BaseModel):
+    guide: str
+    learned_from: int
+
+
+class SourceRef(BaseModel):
+    content_id: str
+    kind: Kind
+    title: ShortText
+    path: ShortText
+
+
+class Idea(BaseModel):
+    model_config = ConfigDict(extra="ignore")
+    id: str
+    type: str = "idea"
+    text: Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=600)]
+    angle: ShortText = ""
+    source: SourceRef | None = None
+    used_by: str | None = None  # post id once turned into a post
+    created_at: datetime = Field(default_factory=utcnow)
+
+
+class IdeaIn(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    text: Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=600)]
+    angle: ShortText = ""
+
+
+class MineResult(BaseModel):
+    added: int
+    scanned: int
+    remaining: int
+
+
+class PostStatus(StrEnum):
+    draft = "draft"
+    ready = "ready"
+    posted = "posted"
+
+
+class PostVisual(StrEnum):
+    none = "none"
+    quote = "quote"
+    image = "image"
+
+
+class PostIn(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    seed: Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=2000)]
+    source: SourceRef | None = None
+    idea_id: str | None = None
+    linkedin: Annotated[str, StringConstraints(max_length=3000)] = ""
+    x: Annotated[str, StringConstraints(max_length=280)] = ""
+    hook: Annotated[str, StringConstraints(strip_whitespace=True, max_length=260)] = ""
+    visual: PostVisual = PostVisual.quote
+    image: Image | None = None
+    cover: CoverInfo | None = None
+    status: PostStatus = PostStatus.draft
+    # Set for posts generated from an article's distribution plan.
+    role: Annotated[str, StringConstraints(max_length=40)] = ""
+    planned_for: datetime | None = None
+
+
+class Post(PostIn):
+    model_config = ConfigDict(extra="ignore")
+    id: str
+    type: str = "post"
+    created_at: datetime = Field(default_factory=utcnow)
+    updated_at: datetime = Field(default_factory=utcnow)
+    posted_at: datetime | None = None
+
+
+class PostWriteRequest(BaseModel):
+    """Draft or refine a post. With `current` and `instruction`, it revises; otherwise it writes fresh."""
+
+    model_config = ConfigDict(extra="forbid")
+    seed: Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=2000)]
+    source_id: str | None = None
+    current: "PostCopy | None" = None
+    instruction: Annotated[str, StringConstraints(strip_whitespace=True, max_length=300)] = ""
+
+
+class PostCopy(BaseModel):
+    linkedin: Annotated[str, StringConstraints(max_length=3000)] = ""
+    x: Annotated[str, StringConstraints(max_length=280)] = ""
+    hook: Annotated[str, StringConstraints(max_length=260)] = ""
+
+
+PostWriteRequest.model_rebuild()
+
+
+# ---------- Article workbench: insight -> outline -> research -> draft -> check -> distribute ----------
+
+
+class Playbook(BaseModel):
+    """The author's editorial rules for long-form articles, editable in the studio."""
+
+    model_config = ConfigDict(extra="ignore")
+    id: str = "playbook"
+    type: str = "playbook"
+    rules: Annotated[str, StringConstraints(strip_whitespace=True, max_length=12000)] = ""
+    updated_at: datetime | None = None
+
+
+class PlaybookIn(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    rules: Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=12000)]
+
+
+class OutlineSection(BaseModel):
+    key: Annotated[str, StringConstraints(pattern=r"^[a-z0-9-]{1,40}$")]
+    title: ShortText
+    purpose: Annotated[str, StringConstraints(max_length=600)] = ""
+    research: Annotated[str, StringConstraints(max_length=300)] = ""  # web query; empty = no outside evidence needed
+
+
+class ArticleSource(BaseModel):
+    id: str
+    title: ShortText
+    publisher: ShortText
+    url: HttpUrl
+    published: Annotated[str, StringConstraints(max_length=40)] = ""  # "July 2026"
+    sponsor: ShortText = ""  # who paid for the research, if anyone
+    finding: Annotated[str, StringConstraints(max_length=800)] = ""  # the statistic or quote, as stated by the source
+    section: Annotated[str, StringConstraints(max_length=40)] = ""
+    selected: bool = True
+    added_by: Literal["research", "author"] = "research"
+
+
+class ClaimCheck(BaseModel):
+    claim: Annotated[str, StringConstraints(max_length=600)]
+    status: Literal["sourced", "unsourced", "mismatch", "experience"]
+    source_url: str = ""
+    note: Annotated[str, StringConstraints(max_length=400)] = ""
+
+
+class ArticleCheck(BaseModel):
+    word_count: int
+    within_length: bool
+    claims: list[ClaimCheck] = Field(default_factory=list)
+    voice_issues: list[str] = Field(default_factory=list)
+    guardrail_issues: list[str] = Field(default_factory=list)
+    has_field_story: bool = False
+    # Figures in the article that appear in none of the sources: found by code, not the model.
+    unmatched_numbers: list[str] = Field(default_factory=list)
+    verdict: Annotated[str, StringConstraints(max_length=600)] = ""
+    checked_at: datetime = Field(default_factory=utcnow)
+
+
+class ArticleWorkIn(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    insight: Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=3000)]
+    angle: Annotated[str, StringConstraints(max_length=600)] = ""
+    headline: Annotated[str, StringConstraints(strip_whitespace=True, max_length=200)] = ""
+    headline_options: list[ShortText] = Field(default_factory=list, max_length=6)
+    outline: list[OutlineSection] = Field(default_factory=list, max_length=12)
+    sources: list[ArticleSource] = Field(default_factory=list, max_length=40)
+    field_notes: Annotated[str, StringConstraints(max_length=3000)] = ""
+    source_ref: SourceRef | None = None
+    idea_id: str | None = None
+
+
+class ArticleWork(ArticleWorkIn):
+    model_config = ConfigDict(extra="ignore")
+    id: str
+    type: str = "article"
+    content_id: str | None = None
+    check: ArticleCheck | None = None
+    distributed: list[str] = Field(default_factory=list)  # post ids
+    created_at: datetime = Field(default_factory=utcnow)
+    updated_at: datetime = Field(default_factory=utcnow)
+
+
+class ResearchRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    section: Annotated[str, StringConstraints(max_length=40)] = ""
+    query: Annotated[str, StringConstraints(strip_whitespace=True, max_length=300)] = ""
+
+
+class ResearchResult(BaseModel):
+    work: "ArticleWork"
+    added: int
+    skipped: int  # findings dropped because their URL wasn't among the search results
+
+
+class DraftResult(BaseModel):
+    work: ArticleWork
+    content: Content
+
+
+ResearchResult.model_rebuild()

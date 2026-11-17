@@ -3,6 +3,8 @@
 import { useId, useState } from "react";
 
 import { generateCoversAction } from "@/app/studio/actions";
+
+import { CoverBriefsDialog } from "./CoverBriefsDialog";
 import type { ContentInput, CoverInfo, CoverResult, Image } from "@/lib/types";
 
 type State = { status: "idle" } | { status: "loading"; count: number } | { status: "error"; message: string } | { status: "ready"; result: CoverResult; note: string };
@@ -26,15 +28,18 @@ export function CoverGenerator({
   // The last scene the art director returned. Re-rendering it unchanged skips re-interpretation.
   const [scene, setScene] = useState(form.cover?.concept ?? "");
   const [state, setState] = useState<State>({ status: "idle" });
+  const [briefsOpen, setBriefsOpen] = useState(false);
   const conceptId = useId();
   const hintId = useId();
   const busy = state.status === "loading";
   const noTitle = !form.title.trim();
 
-  async function generate() {
+  async function generate(chosenScene?: string) {
+    const idea = chosenScene ?? concept;
+    const literal = chosenScene !== undefined || (Boolean(idea.trim()) && idea.trim() === scene.trim());
     setState({ status: "loading", count: state.status === "ready" ? state.result.candidates.length || EXPECTED : EXPECTED });
     try {
-      const res = await generateCoversAction({ kind: form.kind, title: form.title, body: form.body, category: form.category, concept, literal: Boolean(concept.trim()) && concept.trim() === scene.trim() });
+      const res = await generateCoversAction({ kind: form.kind, title: form.title, body: form.body, category: form.category, concept: idea, literal });
       if (!res.ok) return setState({ status: "error", message: res.error });
       setConcept(res.data.concept);
       setScene(res.data.concept);
@@ -75,9 +80,24 @@ export function CoverGenerator({
         </span>
       </div>
 
-      <button type="button" className="pill sm" style={{ alignSelf: "flex-start" }} onClick={() => void generate()} disabled={busy || noTitle} title={noTitle ? "Add a title first" : undefined}>
-        {busy ? "Rendering options…" : state.status === "ready" ? "Generate new options" : "Generate cover"}
-      </button>
+      <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+        <button type="button" className="pill ghost sm" onClick={() => setBriefsOpen(true)} disabled={busy || noTitle} title={noTitle ? "Add a title first" : undefined}>
+          Suggest ideas
+        </button>
+        <button type="button" className="pill sm" onClick={() => void generate()} disabled={busy || noTitle} title={noTitle ? "Add a title first" : undefined}>
+          {busy ? "Rendering options…" : state.status === "ready" ? "Generate new options" : "Generate cover"}
+        </button>
+      </div>
+      <CoverBriefsDialog
+        open={briefsOpen}
+        onClose={() => setBriefsOpen(false)}
+        piece={{ kind: form.kind, title: form.title, body: form.body, category: form.category }}
+        onChoose={(chosen) => {
+          setBriefsOpen(false);
+          setConcept(chosen);
+          void generate(chosen);
+        }}
+      />
 
       <div aria-live="polite" aria-busy={busy} style={{ display: "flex", flexDirection: "column", gap: 8 }}>
         {busy && (

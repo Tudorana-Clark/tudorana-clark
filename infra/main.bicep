@@ -136,6 +136,7 @@ var cosmosContainers = [
   { name: 'content', pk: '/kind' }
   { name: 'subscribers', pk: '/id' }
   { name: 'messages', pk: '/id' }
+  { name: 'studio', pk: '/type' } // content studio: voice profile, idea bank, short-form posts
 ]
 
 resource containers 'Microsoft.DocumentDB/databaseAccounts/sqlDatabases/containers@2024-11-15' = [for c in cosmosContainers: {

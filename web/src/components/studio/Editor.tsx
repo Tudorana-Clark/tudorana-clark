@@ -178,6 +178,11 @@ export function Editor({ initial, siteUrl, tagSuggestions }: { initial: Content 
           </span>
         </div>
         <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+          {isLive && doc && (
+            <a className="pill ghost sm" href={`/studio/posts/new?from=${doc.id}`}>
+              Make a post
+            </a>
+          )}
           {isLive && (
             <a className="pill ghost sm" href={livePath} target="_blank" rel="noopener">
               View live

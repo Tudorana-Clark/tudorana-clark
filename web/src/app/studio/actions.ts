@@ -5,23 +5,13 @@ import { cookies, headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { z } from "zod";
 
-import { admin, ApiError, CONTENT_TAG } from "@/lib/api";
+import { fail, requireSession } from "@/lib/action-helpers";
+import { admin, CONTENT_TAG } from "@/lib/api";
 import { env, passwordLoginEnabled } from "@/lib/env";
-import { createSessionToken, passwordMatches, SESSION_COOKIE, SESSION_TTL_SECONDS, verifySessionToken } from "@/lib/session";
+import { createSessionToken, passwordMatches, SESSION_COOKIE, SESSION_TTL_SECONDS } from "@/lib/session";
 import type { ActionResult, Content, ContentInput, CoverResult, SeoSuggestion } from "@/lib/types";
 
 // ---------- Session ----------
-
-async function requireSession(): Promise<void> {
-  const token = (await cookies()).get(SESSION_COOKIE)?.value;
-  if (!(await verifySessionToken(token, env.SESSION_SECRET))) redirect("/studio/login");
-}
-
-function fail(err: unknown): { ok: false; error: string } {
-  if (err instanceof ApiError) return { ok: false, error: err.message };
-  console.error(JSON.stringify({ msg: "studio_action_failed", error: String(err) }));
-  return { ok: false, error: "Something went wrong. Your changes are still in the editor — try again." };
-}
 
 const failedLogins = new Map<string, { count: number; until: number }>();
 
