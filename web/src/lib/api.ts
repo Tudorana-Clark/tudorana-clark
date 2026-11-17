@@ -158,8 +158,8 @@ export const studio = {
   // AI steps: web research and drafting can each take a minute or two.
   outline: (id: string) => request<ArticleWork>(`${S}/articles/${encodeURIComponent(id)}/outline`, json("POST", {}, 120_000)),
   research: (id: string, input: { section: string; query: string }) => request<{ work: ArticleWork; added: number; skipped: number }>(`${S}/articles/${encodeURIComponent(id)}/research`, json("POST", input, 180_000)),
-  draft: (id: string) => request<{ work: ArticleWork; content: Content }>(`${S}/articles/${encodeURIComponent(id)}/draft`, json("POST", {}, 180_000)),
-  check: (id: string) => request<ArticleWork>(`${S}/articles/${encodeURIComponent(id)}/check`, json("POST", {}, 150_000)),
+  draft: (id: string) => request<{ work: ArticleWork; content: Content }>(`${S}/articles/${encodeURIComponent(id)}/draft`, json("POST", {}, 230_000)),
+  check: (id: string) => request<ArticleWork>(`${S}/articles/${encodeURIComponent(id)}/check`, json("POST", {}, 230_000)),
   sources: () => request<LibrarySource[]>(`${S}/sources`, get),
   // Extraction reads the whole paste, then every link is checked: allow a few minutes for long reports.
   previewImport: (text: string, label: string) => request<{ candidates: ImportCandidate[]; dropped: number }>(`${S}/sources/import/preview`, json("POST", { text, label }, 240_000)),

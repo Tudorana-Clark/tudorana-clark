@@ -18,6 +18,7 @@ from azure.identity.aio import DefaultAzureCredential, get_bearer_token_provider
 from openai import APIError, APITimeoutError, AsyncAzureOpenAI, AsyncOpenAI
 from pydantic import BaseModel, Field
 
+from .claude_composer import ClaudeComposer
 from .errors import UpstreamUnavailable
 from .models import ArticleSource, ClaimCheck, OutlineSection, PostCopy
 from .studio_ai import clip
@@ -26,6 +27,7 @@ log = logging.getLogger(__name__)
 T = TypeVar("T", bound=BaseModel)
 
 FIELD_PLACEHOLDER = "**[From the field — write 100 to 150 words from your own client or Monster experience. The AI never writes this part.]**"
+EVIDENCE_PLACEHOLDER = "**[Evidence needed — add 2 or 3 recent, named statistics here from your sources.]**"
 
 DEFAULT_PLAYBOOK = """Purpose
 Each article builds a public record of judgement: practical, evidence-led thinking on AI, technology, jobs and small business,
@@ -191,13 +193,22 @@ def _sources_block(sources: list[ArticleSource]) -> str:
 
 
 class AzureArticleWriter:
-    def __init__(self, endpoint: str, deployment: str, api_version: str, timeout: float, credential: DefaultAzureCredential, author: str) -> None:
+    def __init__(
+        self, endpoint: str, deployment: str, api_version: str, timeout: float, credential: DefaultAzureCredential, author: str, composer: ClaudeComposer | None = None
+    ) -> None:
+        # Drafting and fact-checking go to Claude when configured; outline, research and posts stay on the OpenAI deployment.
+        self._composer = composer
         self._token = get_bearer_token_provider(credential, "https://cognitiveservices.azure.com/.default")
         self._client = AsyncAzureOpenAI(azure_endpoint=endpoint, api_version=api_version, azure_ad_token_provider=self._token, timeout=timeout, max_retries=2)
         self._v1_base = endpoint.rstrip("/") + "/openai/v1/"
         self._deployment = deployment
         self._timeout = timeout
         self._author = author
+
+    async def _compose(self, system: str, user: str, schema: type[T], temperature: float, what: str) -> T:
+        if self._composer is not None:
+            return await self._composer.parse(system, user, schema, what)
+        return await self._parse(system, user, schema, temperature, what)
 
     async def _parse(self, system: str, user: str, schema: type[T], temperature: float, what: str) -> T:
         try:
@@ -312,14 +323,16 @@ class AzureArticleWriter:
             "Use statistics and quotes ONLY from the sources list, with figures exactly as given, and name the source in the text. "
             "NEVER create a number, percentage, breakdown or table value that is not in the sources list. If the sources don't hold enough data "
             "for a table, present the evidence as a short list of the sourced figures instead. "
-            "Aim for 700 to 850 words before the Sources list. "
+            f"Where a section needs statistics and the sources list has none for it, put exactly this placeholder there: {EVIDENCE_PLACEHOLDER} "
+            "Never write notes to the author or comments about the drafting process into the article. "
+            "Aim for 700 to 850 words before the Sources list and never exceed 880. "
             "Label sponsored research as the playbook says. Any claim without a source must read as the author's own experience or view. "
             "Use Markdown: '## ' headings (short), bold for key lines and statistics, a numbered list for the insight, a small table for the evidence where the data allows. "
             "End with '## Sources' listing every source used as: Publisher (sponsor if any), Title, Month Year, URL."
             f"\n\n{today_line()}\n\nPlaybook:\n{playbook}\n\nAuthor's voice:\n{voice}"
         )
         user = f"{brief}\n\nSources the author approved:\n{_sources_block(sources)}\n\n{field}"
-        out = await self._parse(system, user, _Draft, 0.5, "draft")
+        out = await self._compose(system, user, _Draft, 0.5, "draft")
         return DraftOut(title=clip(out.title, 200), excerpt=clip(out.excerpt, 400), body=out.body.strip()[:200_000])
 
     async def check(self, body: str, sources: list[ArticleSource], playbook: str, voice: str) -> CheckOut:
@@ -332,7 +345,7 @@ class AzureArticleWriter:
             f"\n\n{today_line()}\n\nPlaybook:\n{playbook}\n\nAuthor's voice:\n{voice}"
         )
         user = f"Sources available:\n{_sources_block(sources)}\n\nArticle:\n{body[:30000]}"
-        out = await self._parse(system, user, _Check, 0.0, "check")
+        out = await self._compose(system, user, _Check, 0.0, "check")
         return CheckOut(
             claims=[ClaimCheck(claim=clip(c.claim, 600), status=c.status, source_url=c.source_url[:500], note=clip(c.note, 400)) for c in out.claims[:60]],
             voice_issues=[clip(v, 300) for v in out.voice_issues[:20]],
@@ -354,6 +367,8 @@ class AzureArticleWriter:
 
     async def close(self) -> None:
         await self._client.close()
+        if self._composer is not None:
+            await self._composer.close()
 
 
 # ---------- Offline implementation (tests, local without Azure) ----------

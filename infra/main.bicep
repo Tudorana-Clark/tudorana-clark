@@ -30,6 +30,13 @@ param foundryLocation string = 'swedencentral' // nearest region to UK South off
 @description('Requests per minute for the image deployment, capped by subscription quota (6 RPM at tier 1). Pay-per-image; idle costs nothing. 3 options render per click.')
 param imageCapacity int = 6
 
+@description('Claude model for article drafting and fact-checking, on the same Foundry resource (billed through Azure Marketplace).')
+param articleModel string = 'claude-opus-5-5'
+param articleModelVersion string = '2'
+
+@description('Throughput cap for the article model (pay-per-token; idle costs nothing). Subscription quota is 40, shared with other Opus 5.5 deployments.')
+param articleCapacity int = 20
+
 @description('GitHub repository allowed to deploy via OIDC, in GitHub\'s immutable "Owner@ownerId/repo@repoId" form (it\'s what the OIDC token\'s subject carries), and the environment it must run in.')
 param githubRepo string = 'Tudorana-Clark@129794963/tudorana-clark@1461299545'
 param githubEnvironment string = 'production'
@@ -199,6 +206,18 @@ resource imageDeployment 'Microsoft.CognitiveServices/accounts/deployments@2025-
   }
 }
 
+resource articleDeployment 'Microsoft.CognitiveServices/accounts/deployments@2026-09-01' = {
+  parent: foundry
+  name: articleModel
+  sku: { name: 'GlobalStandard', capacity: articleCapacity }
+  properties: {
+    model: { format: 'Anthropic', name: articleModel, version: articleModelVersion }
+    // Required by Anthropic for every Claude deployment on Foundry.
+    modelProviderData: { organizationName: 'Tudorana Clark', industry: 'Technology', countryCode: 'GB' }
+  }
+  dependsOn: [ imageDeployment ] // deployments on one account must be created one at a time
+}
+
 // ---------- Container Apps environment (consumption, scale-to-zero) ----------
 resource env 'Microsoft.App/managedEnvironments@2024-03-01' = {
   name: 'cae-${appName}'
@@ -314,4 +333,6 @@ output openAiEndpoint string = openai.properties.endpoint
 output openAiDeployment string = openaiDeployment.name
 output imageEndpoint string = 'https://${foundry.properties.customSubDomainName}.services.ai.azure.com'
 output imageDeployment string = imageDeployment.name
+output foundryResource string = foundry.name
+output articleDeployment string = articleDeployment.name
 output appInsightsConnectionString string = appInsights.properties.ConnectionString

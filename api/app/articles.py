@@ -7,7 +7,7 @@ import re
 import uuid
 from datetime import UTC, timedelta
 
-from .article_ai import DEFAULT_PLAYBOOK, FIELD_PLACEHOLDER, ArticleWriter, normalise_url
+from .article_ai import DEFAULT_PLAYBOOK, EVIDENCE_PLACEHOLDER, FIELD_PLACEHOLDER, ArticleWriter, normalise_url
 from .config import Settings
 from .errors import Conflict, DomainError, NotFound
 from .library import LibraryService
@@ -63,7 +63,7 @@ def figures(text: str) -> list[str]:
 def unmatched_numbers(body: str, sources_text: str) -> list[str]:
     """Figures the article states that no source contains: the deterministic backstop to the AI fact-check."""
     m = _SOURCES_HEADING.search(body)
-    article = (body[: m.start()] if m else body).replace(FIELD_PLACEHOLDER, "")
+    article = (body[: m.start()] if m else body).replace(FIELD_PLACEHOLDER, "").replace(EVIDENCE_PLACEHOLDER, "")
     known = {_norm_figure(f) for f in figures(sources_text)}
     seen: dict[str, str] = {}
     for f in figures(article):

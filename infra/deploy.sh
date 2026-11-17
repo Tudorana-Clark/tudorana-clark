@@ -69,6 +69,7 @@ if [[ $TARGET == all || $TARGET == api ]]; then
     "COSMOS_ENDPOINT=$(out cosmosEndpoint)" "STORAGE_ACCOUNT=$(out storageAccount)" "MEDIA_BASE_URL=$(out mediaBaseUrl)"
     "OPENAI_ENDPOINT=$(out openAiEndpoint)" "OPENAI_DEPLOYMENT=$(out openAiDeployment)"
     "IMAGE_ENDPOINT=$(out imageEndpoint)" "IMAGE_DEPLOYMENT=$(out imageDeployment)"
+    "CLAUDE_RESOURCE=$(out foundryResource)" "CLAUDE_DEPLOYMENT=$(out articleDeployment)"
     "NOTIFY_EMAIL=${NOTIFY_EMAIL:-daniel@tudoranaclark.com}")
   if [[ $MODE == full ]]; then
     args+=(ADMIN_API_KEY=secretref:admin-api-key INDEXNOW_KEY=secretref:indexnow-key RESEND_API_KEY=secretref:resend-api-key)

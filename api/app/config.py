@@ -42,6 +42,11 @@ class Settings(BaseSettings):
     # Long-form drafting and research. Empty uses openai_deployment; a larger model writes noticeably better articles.
     article_deployment: str = ""
     article_timeout_seconds: float = 120.0
+    # Claude on the Foundry resource for drafting and fact-checking. Empty resource keeps those steps on the OpenAI deployment.
+    claude_resource: str = ""  # e.g. aif-tudoranaclark-gfkywk
+    claude_deployment: str = "claude-opus-5-5"
+    claude_effort: Literal["low", "medium", "high", "xhigh", "max"] = "high"
+    claude_timeout_seconds: float = 180.0  # the studio waits 230 s; Azure ingress cuts off at 240 s
 
     # AI cover images (MAI image model on a Microsoft Foundry resource). Empty endpoint uses offline placeholders.
     image_endpoint: str = ""  # https://<foundry-resource>.services.ai.azure.com

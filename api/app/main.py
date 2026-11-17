@@ -18,6 +18,7 @@ from fastapi.responses import JSONResponse
 from .ai import AzureSeoGenerator, OfflineSeoGenerator, SeoGenerator
 from .article_ai import ArticleWriter, AzureArticleWriter, OfflineArticleWriter
 from .articles import ArticleService
+from .claude_composer import ClaudeComposer
 from .config import Settings, get_settings
 from .covers import CoverService, ImageClient, MaiImageClient, OfflineImageClient, UnconfiguredImageClient, load_references
 from .deps import Container
@@ -94,6 +95,9 @@ def build_container(settings: Settings, credential: DefaultAzureCredential | Non
             settings.article_timeout_seconds,
             credential,
             settings.author_name,
+            ClaudeComposer(settings.claude_resource, settings.claude_deployment, settings.claude_effort, settings.claude_timeout_seconds, credential)
+            if settings.claude_resource
+            else None,
         )
     else:
         article_writer = OfflineArticleWriter()
@@ -130,13 +134,18 @@ def create_app(settings: Settings | None = None) -> FastAPI:
 
     @asynccontextmanager
     async def lifespan(app: FastAPI) -> AsyncIterator[None]:
-        needs_azure = settings.storage_backend == "cosmos" or bool(settings.openai_endpoint) or bool(settings.image_endpoint)
+        needs_azure = settings.storage_backend == "cosmos" or bool(settings.openai_endpoint) or bool(settings.image_endpoint) or bool(settings.claude_resource)
         credential = DefaultAzureCredential(managed_identity_client_id=settings.azure_client_id or None) if needs_azure else None
         if settings.environment == "production" and not settings.admin_api_key.get_secret_value():
             raise RuntimeError("ADMIN_API_KEY must be set in production")
         app.state.settings = settings
         app.state.container = build_container(settings, credential)
-        features = {"ai": bool(settings.openai_endpoint), "images": bool(settings.image_endpoint), "email": bool(settings.resend_api_key.get_secret_value())}
+        features = {
+            "ai": bool(settings.openai_endpoint),
+            "images": bool(settings.image_endpoint),
+            "claude": bool(settings.claude_resource),
+            "email": bool(settings.resend_api_key.get_secret_value()),
+        }
         log.info("api_started", extra={"backend": settings.storage_backend, **features})
         try:
             yield
