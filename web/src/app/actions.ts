@@ -37,7 +37,7 @@ export async function subscribeAction(_prev: ActionResult | null, form: FormData
 const contactSchema = z.object({
   name: z.string().trim().min(1, "Tell me your name.").max(120),
   email: z.email("Enter a valid email address."),
-  topic: z.enum(["Speaking", "Advisory", "Media", "Something else"], { message: "Choose a topic." }),
+  topic: z.enum(["Speaking", "Advisory", "Research", "Media", "Something else"], { message: "Choose a topic." }),
   message: z.string().trim().min(10, "Add a little more detail (at least 10 characters).").max(5000),
   company: z.string().max(0).default(""),
 });

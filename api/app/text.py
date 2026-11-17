@@ -9,8 +9,12 @@ _WORDS_PER_MINUTE = 230
 _MD_NOISE = re.compile(r"(```.*?```)|(`[^`]*`)|(!\[[^\]]*\]\([^)]*\))|(\[[^\]]*\]\([^)]*\))|[#>*_~\-]+", re.S)
 
 
+_APOSTROPHES = re.compile(r"(?<=\w)['’](?=\w)")
+
+
 def slugify(value: str) -> str:
-    return _slugify(value, max_length=80, word_boundary=True) or "untitled"
+    # "isn't" → "isnt", not "isn-t": drop apostrophes inside words before slugifying.
+    return _slugify(_APOSTROPHES.sub("", value), max_length=80, word_boundary=True) or "untitled"
 
 
 def plain_text(markdown: str) -> str:

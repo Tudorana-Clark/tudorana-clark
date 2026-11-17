@@ -56,6 +56,9 @@ def article(**over: object) -> dict[str, object]:
 
 def test_text_helpers() -> None:
     assert slugify("Why small businesses can win the AI era!") == "why-small-businesses-can-win-the-ai-era"
+    assert slugify("Opening the explanation isn't checking") == "opening-the-explanation-isnt-checking"
+    assert slugify("One severe risk shouldn’t be averaged") == "one-severe-risk-shouldnt-be-averaged"
+    assert slugify("Daniel's 'quoted' word") == "daniels-quoted-word"
     assert reading_minutes("word " * 461) == 3
 
 
@@ -144,6 +147,12 @@ def test_contact(client: TestClient, notifier: RecordingNotifier) -> None:
     assert client.post("/v1/contact", json=body, headers={"x-client-ip": "2.2.2.2"}).status_code == 202
     assert client.get("/v1/admin/messages", headers=ADMIN).json()[0]["name"] == "Ada"
     assert notifier.sent == [("contact", "ada@example.com")]
+
+
+def test_contact_accepts_research_topic_and_rejects_unknown(client: TestClient) -> None:
+    body = {"name": "Grace", "email": "grace@example.com", "topic": "Research", "message": "I'd like to review the factors."}
+    assert client.post("/v1/contact", json=body, headers={"x-client-ip": "3.3.3.3"}).status_code == 202
+    assert client.post("/v1/contact", json={**body, "topic": "Spam"}, headers={"x-client-ip": "3.3.3.4"}).status_code == 422
 
 
 def test_email_body_is_escaped() -> None:

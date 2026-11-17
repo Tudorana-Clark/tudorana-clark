@@ -4,9 +4,11 @@ import { useActionState } from "react";
 
 import { contactAction } from "@/app/actions";
 
-const TOPICS = ["Speaking", "Advisory", "Media", "Something else"] as const;
+export const TOPICS = ["Speaking", "Advisory", "Research", "Media", "Something else"] as const;
+export type Topic = (typeof TOPICS)[number];
 
-export function ContactForm() {
+/** `topic` preselects the Topic field, e.g. "Research" on the research page. */
+export function ContactForm({ topic, label = "Contact form" }: { topic?: Topic; label?: string } = {}) {
   const [state, action, pending] = useActionState(contactAction, null);
   const err = state?.ok === false ? state : null;
   const invalid = (f: string) => (err?.field === f ? true : undefined);
@@ -25,7 +27,7 @@ export function ContactForm() {
   }
 
   return (
-    <form action={action} aria-label="Contact form" className="stack-sm" style={{ display: "grid", gridTemplateColumns: "repeat(2, minmax(0,1fr))", gap: 14 }} noValidate>
+    <form action={action} aria-label={label} className="stack-sm" style={{ display: "grid", gridTemplateColumns: "repeat(2, minmax(0,1fr))", gap: 14 }} noValidate>
       <label className="field">
         Name
         <input className="input" name="name" type="text" autoComplete="name" required maxLength={120} aria-invalid={invalid("name")} disabled={pending} />
@@ -36,7 +38,7 @@ export function ContactForm() {
       </label>
       <label className="field" style={{ gridColumn: "1 / -1" }}>
         Topic
-        <select className="input select-brand" name="topic" required defaultValue="" aria-invalid={invalid("topic")} disabled={pending}>
+        <select className="input select-brand" name="topic" required defaultValue={topic ?? ""} aria-invalid={invalid("topic")} disabled={pending}>
           <option value="" disabled>
             Please select
           </option>

@@ -219,6 +219,7 @@ class SubscribeIn(BaseModel):
 class Topic(StrEnum):
     speaking = "Speaking"
     advisory = "Advisory"
+    research = "Research"
     media = "Media"
     other = "Something else"
 
