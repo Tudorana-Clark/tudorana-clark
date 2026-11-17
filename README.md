@@ -104,6 +104,22 @@ A writing slug can't use a top-level address the site owns (`about`, `studio`, `
 Edits made outside the studio (scripts, imports) show up within 5 minutes, or straight away after `curl -X POST -H "x-admin-key: $ADMIN_API_KEY" <site>/api/revalidate`.
 Cosmos container `content` is partitioned by `/kind` and has a unique `/slug`. `subscribers` and `messages` back the newsletter and contact forms; read them in **/studio/inbox**, with CSV export.
 
+### Long-read blocks (research papers)
+
+A research paper with three or more `##` headings becomes a long read with an "On this page" list. Inside the body, a fenced code block named after a block renders as a designed component. Each row's fields are separated by ` | `, and `@option value` lines set options. The fences are plain Markdown, so the `.md` copy and `llms-full.txt` stay readable. A block with a mistake renders as an ordinary code block and is logged as `doc_block_invalid`; the page itself never breaks.
+
+| Block | Row format | Options |
+|---|---|---|
+| `stats` | `value \| label` | `@title` |
+| `bars` | `label \| number \| optional note` | `@title` (required), `@unit`, `@max`, `@caption` |
+| `callout` | free Markdown text | `@title`, `@tone finding` |
+| `cards` | `title \| body` or `title \| tag \| body` | `@title` |
+| `steps` | `title \| body` | `@title` |
+| `glossary` | `term \| definition` (also published as schema.org `DefinedTermSet`) | `@title` |
+| `sources` | `Authors (Year) \| Title \| Venue \| URL \| what it informed` (also published as the paper's `citation`) | `@title` |
+
+The code is in `web/src/lib/doc-blocks.ts` (parsing) and `web/src/components/doc/` (rendering).
+
 ## Still to do
 
 - **Brand photography:** upload in the studio, then redeploy with `PORTRAIT_URL=… STAGE_PHOTO_URL=…`.

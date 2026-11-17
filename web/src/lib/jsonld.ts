@@ -46,7 +46,13 @@ export function breadcrumbs(trail: { name: string; path: string }[]): Json {
   };
 }
 
-export function contentGraph(c: Content, section: { name: string; path: string }): Json {
+/** Extra facts a page knows from its body: works it cites, terms it defines. */
+export interface GraphExtras {
+  citation?: Json[];
+  nodes?: Json[];
+}
+
+export function contentGraph(c: Content, section: { name: string; path: string }, extras: GraphExtras = {}): Json {
   const url = absoluteUrl(pathFor(c));
   const image = c.feature_image?.url ?? absoluteUrl(`/og/${c.slug}`);
   const common: Json = {
@@ -74,7 +80,7 @@ export function contentGraph(c: Content, section: { name: string; path: string }
 
   switch (c.kind) {
     case "research":
-      nodes.push({ ...common, "@type": "ScholarlyArticle", citation: c.research?.citation || undefined, sourceOrganization: c.research?.institution ? { "@type": "CollegeOrUniversity", name: c.research.institution } : undefined, encoding: c.research?.pdf_url ? { "@type": "MediaObject", encodingFormat: "application/pdf", contentUrl: c.research.pdf_url } : undefined });
+      nodes.push({ ...common, "@type": "ScholarlyArticle", citation: extras.citation?.length ? extras.citation : undefined, creditText: c.research?.citation || undefined, sourceOrganization: c.research?.institution ? { "@type": "CollegeOrUniversity", name: c.research.institution } : undefined, encoding: c.research?.pdf_url ? { "@type": "MediaObject", encodingFormat: "application/pdf", contentUrl: c.research.pdf_url } : undefined });
       break;
     case "talk":
       nodes.push({ ...common, "@type": "Article" });
@@ -115,7 +121,7 @@ export function contentGraph(c: Content, section: { name: string; path: string }
       mainEntity: c.seo.faq.map((f) => ({ "@type": "Question", name: f.question, acceptedAnswer: { "@type": "Answer", text: f.answer } })),
     });
   }
-  return { "@context": "https://schema.org", "@graph": [...nodes, personNode()] };
+  return { "@context": "https://schema.org", "@graph": [...nodes, ...(extras.nodes ?? []), personNode()] };
 }
 
 /** Serialise for a <script type="application/ld+json">, escaping `<` so content can't close the tag. */

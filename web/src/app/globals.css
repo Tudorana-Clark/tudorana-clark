@@ -1295,3 +1295,435 @@ select.select-brand:has(option[value=""]:checked) {
 .post-row:active {
   background: var(--card-hover);
 }
+
+/* ── Long-read documents (research papers): contents list + structured blocks ── */
+.doc-layout {
+  margin-top: 96px;
+  display: grid;
+  grid-template-columns: 216px minmax(0, 736px);
+  gap: 64px;
+  justify-content: center;
+}
+.doc-aside {
+  position: relative;
+}
+.toc-aside {
+  position: sticky;
+  top: 24px;
+  max-height: calc(100vh - 48px);
+  overflow-y: auto;
+}
+.toc-title {
+  margin: 0 0 12px;
+  font-size: 13px;
+  color: var(--muted);
+}
+.toc-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  scroll-target-group: auto;
+}
+.toc-list a {
+  display: block;
+  padding: 8px 12px;
+  border-left: 2px solid var(--line);
+  font-size: 14px;
+  line-height: 1.4;
+  color: var(--muted);
+  transition:
+    color 160ms var(--ease),
+    border-color 160ms var(--ease),
+    background-color 160ms var(--ease);
+}
+.toc-list a:hover {
+  color: var(--ink);
+  border-left-color: var(--muted-2);
+}
+.toc-list a:active {
+  background: var(--card);
+}
+/* The native :target-current rule lives in Contents.tsx (the CSS toolchain can't parse it yet). */
+.toc-list a.is-current {
+  color: var(--ink);
+  font-weight: 600;
+  border-left-color: var(--brass);
+}
+.toc-inline {
+  display: none;
+  margin-bottom: 40px;
+  background: var(--card);
+  border-radius: var(--r-md);
+}
+.toc-inline summary {
+  cursor: pointer;
+  padding: 16px 20px;
+  font-weight: 500;
+  border-radius: var(--r-md);
+}
+.toc-inline summary:hover {
+  background: var(--card-hover);
+}
+.toc-inline nav {
+  padding: 0 12px 16px;
+}
+
+.doc-main > .prose,
+.doc-short > .prose,
+.doc-callout .prose {
+  margin: 0;
+  padding: 0;
+  max-width: none;
+}
+.doc-main > .prose > :last-child,
+.doc-callout .prose > :last-child {
+  margin-bottom: 0;
+}
+.doc-main .prose h2 {
+  margin-top: 96px;
+  font-size: 40px;
+  scroll-margin-top: 24px;
+}
+.doc-main > .prose:first-of-type > h2:first-child {
+  margin-top: 0;
+}
+.doc-short > .prose {
+  font-size: 17px;
+}
+
+.doc-block,
+.doc-callout {
+  margin: 40px 0;
+}
+.doc-block-title {
+  margin: 0 0 16px;
+  font-family: var(--font-display);
+  font-weight: 500;
+  font-size: 20px;
+  letter-spacing: -0.02em;
+}
+
+/* Scoreboard */
+.doc-stats {
+  margin: 0;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: 16px;
+}
+.doc-stats > div {
+  background: var(--navy);
+  color: var(--white);
+  border-radius: var(--r-md);
+  padding: 24px;
+  display: flex;
+  flex-direction: column-reverse;
+  justify-content: flex-end;
+  gap: 8px;
+}
+.doc-stats dd {
+  margin: 0;
+  font-family: var(--font-display);
+  font-weight: 500;
+  font-size: 36px;
+  line-height: 1;
+  letter-spacing: -0.04em;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+  color: var(--gold);
+}
+.doc-stats dt {
+  font-size: 14px;
+  line-height: 1.45;
+  color: var(--on-dark-2);
+}
+
+/* Bar chart (a table underneath) */
+.doc-bars {
+  background: var(--card);
+  border-radius: var(--r-lg);
+  padding: 32px;
+}
+.doc-bars table {
+  inline-size: 100%;
+  border-collapse: collapse;
+}
+.doc-bars caption {
+  text-align: left;
+  font-family: var(--font-display);
+  font-weight: 500;
+  font-size: 20px;
+  letter-spacing: -0.02em;
+  padding-bottom: 16px;
+}
+.doc-bars tbody th,
+.doc-bars td {
+  padding: 8px 0;
+  vertical-align: middle;
+  font-size: 15px;
+}
+.doc-bars tbody th {
+  text-align: left;
+  font-weight: 500;
+  padding-right: 16px;
+  inline-size: 40%;
+}
+.doc-bar-note {
+  display: block;
+  font-weight: 400;
+  font-size: 13px;
+  color: var(--muted);
+  margin-top: 4px;
+}
+.doc-bars td {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.doc-bar-track {
+  flex: 1;
+  block-size: 16px;
+  background: var(--white);
+  border-radius: var(--pill);
+  overflow: hidden;
+}
+.doc-bar-fill {
+  display: block;
+  block-size: 100%;
+  background: var(--navy);
+  border-radius: var(--pill);
+}
+.doc-bar-value {
+  min-inline-size: 48px;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+  font-weight: 600;
+}
+.doc-bar-unit {
+  font-weight: 400;
+  color: var(--muted);
+}
+.doc-bars figcaption {
+  margin-top: 16px;
+  font-size: 14px;
+  line-height: 1.55;
+  color: var(--muted);
+}
+
+/* Callouts */
+.doc-callout {
+  border-radius: var(--r-lg);
+  padding: 32px;
+  background: var(--card);
+  border-left: 4px solid var(--muted-2);
+}
+.doc-callout.finding {
+  border-left-color: var(--brass);
+}
+.doc-callout-title {
+  margin: 0 0 8px;
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--brass);
+}
+.doc-callout .prose {
+  font-size: 17px;
+}
+
+/* Cards */
+.doc-cards {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(256px, 1fr));
+  gap: 16px;
+}
+.doc-cards li {
+  background: var(--card);
+  border-radius: var(--r-md);
+  padding: 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.doc-card-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 12px;
+  font-size: 17px;
+  line-height: 1.3;
+}
+.doc-tag {
+  flex: none;
+  font-size: 13px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  background: var(--navy);
+  color: var(--gold);
+  border-radius: var(--pill);
+  padding: 4px 12px;
+}
+.doc-cards p,
+.doc-steps p {
+  margin: 0;
+  font-size: 15px;
+  line-height: 1.55;
+  color: var(--muted);
+}
+
+/* Steps */
+.doc-steps {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  counter-reset: step;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 16px;
+}
+.doc-steps li {
+  counter-increment: step;
+  border-top: 2px solid var(--ink);
+  padding-top: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.doc-steps li::before {
+  content: counter(step, decimal-leading-zero);
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--brass);
+}
+.doc-steps strong {
+  font-size: 17px;
+}
+
+/* Glossary */
+.doc-glossary {
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  border-top: 1px solid var(--line);
+}
+.doc-glossary > div {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 2fr);
+  gap: 24px;
+  padding: 20px 0;
+  border-bottom: 1px solid var(--line);
+  scroll-margin-top: 24px;
+}
+.doc-glossary dt {
+  font-weight: 600;
+}
+.doc-glossary dd {
+  margin: 0;
+  font-size: 16px;
+  line-height: 1.6;
+  color: var(--muted);
+}
+
+/* Sources */
+.doc-sources {
+  margin: 0;
+  padding-left: 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+.doc-sources li::marker {
+  color: var(--muted-2);
+  font-variant-numeric: tabular-nums;
+}
+.doc-sources p {
+  margin: 0;
+}
+.doc-source-cite {
+  font-size: 16px;
+  line-height: 1.55;
+}
+.doc-source-cite a {
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  text-decoration-color: var(--line);
+}
+.doc-source-cite a:hover {
+  text-decoration-color: currentColor;
+}
+.doc-source-venue {
+  color: var(--muted);
+}
+.doc-source-note {
+  margin-top: 4px !important;
+  font-size: 14px;
+  line-height: 1.55;
+  color: var(--muted);
+}
+
+@media (max-width: 1024px) {
+  .doc-layout {
+    grid-template-columns: minmax(0, 736px);
+  }
+  .doc-aside {
+    display: none;
+  }
+  .toc-inline {
+    display: block;
+  }
+}
+@media (max-width: 860px) {
+  .doc-layout {
+    margin-top: 64px;
+  }
+  .doc-main .prose h2 {
+    margin-top: 72px;
+    font-size: 32px;
+  }
+  .doc-bars,
+  .doc-callout {
+    padding: 24px 16px;
+  }
+  /* Stack label above bar so the bar keeps a usable length on phones. */
+  .doc-bars tbody tr {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    gap: 8px;
+    padding: 8px 0;
+  }
+  .doc-bars tbody th {
+    display: block;
+    inline-size: auto;
+    padding: 0;
+  }
+  .doc-bars td {
+    padding: 0;
+  }
+  .doc-stats {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .doc-stats > div {
+    padding: 16px;
+  }
+  .doc-stats dd {
+    font-size: 28px;
+  }
+  .doc-glossary > div {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 8px;
+  }
+}
+@media (forced-colors: active) {
+  .doc-bar-fill {
+    background: CanvasText;
+  }
+  .toc-list a.is-current {
+    border-left-color: Highlight;
+  }
+}

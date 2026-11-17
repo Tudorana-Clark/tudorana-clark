@@ -9,6 +9,18 @@ export interface Heading {
   depth: number;
 }
 
+/** marked hands headings over HTML-escaped; ids and the contents list need the plain text. */
+function plainText(html: string): string {
+  return html
+    .replace(/<[^>]+>/g, "")
+    .replace(/&#(\d+);/g, (_, n: string) => String.fromCodePoint(Number(n)))
+    .replace(/&#x([0-9a-f]+);/gi, (_, n: string) => String.fromCodePoint(parseInt(n, 16)))
+    .replaceAll("&quot;", '"')
+    .replaceAll("&lt;", "<")
+    .replaceAll("&gt;", ">")
+    .replaceAll("&amp;", "&");
+}
+
 function slug(text: string): string {
   return text
     .toLowerCase()
@@ -25,20 +37,22 @@ const ALLOWED_IFRAME_HOSTS = ["www.youtube-nocookie.com", "www.youtube.com", "pl
  * Markdown → safe HTML. Headings get stable ids (for deep links and AI citations),
  * external links open safely, images lazy-load, and everything is sanitised.
  */
-export function renderMarkdown(md: string): { html: string; headings: Heading[] } {
-  const headings: Heading[] = [];
-  const used = new Map<string, number>();
+export function renderMarkdown(md: string, shared?: { used: Map<string, number>; headings: Heading[] }): { html: string; headings: Heading[] } {
+  // Pass `shared` when one page renders several Markdown fragments, so heading ids stay unique.
+  const headings: Heading[] = shared?.headings ?? [];
+  const used = shared?.used ?? new Map<string, number>();
   const marked = new Marked({ gfm: true, breaks: false });
 
   marked.use({
     renderer: {
       heading(this: { parser: { parseInline(t: Tokens.Generic[]): string } }, token: Tokens.Heading) {
         const text = this.parser.parseInline(token.tokens);
-        const base = slug(text) || "section";
+        const plain = plainText(text);
+        const base = slug(plain) || "section";
         const n = used.get(base) ?? 0;
         used.set(base, n + 1);
         const id = n ? `${base}-${n}` : base;
-        if (token.depth <= 3) headings.push({ id, text: text.replace(/<[^>]+>/g, ""), depth: token.depth });
+        if (token.depth <= 3) headings.push({ id, text: plain, depth: token.depth });
         const depth = Math.max(2, token.depth); // the page owns the single <h1>
         return `<h${depth} id="${id}">${text}</h${depth}>\n`;
       },

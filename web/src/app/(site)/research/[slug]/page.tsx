@@ -1,12 +1,14 @@
 import type { Metadata } from "next";
 import { notFound, permanentRedirect } from "next/navigation";
 
+import { Contents } from "@/components/doc/Contents";
+import { renderDoc } from "@/components/doc/DocBody";
 import { ShareBar } from "@/components/ShareBar";
 import { JsonLd, Media } from "@/components/ui";
 import { getPublished } from "@/lib/api";
 import { pathFor } from "@/lib/content";
+import { docGraphExtras, parseDocument } from "@/lib/doc-blocks";
 import { contentGraph } from "@/lib/jsonld";
-import { renderMarkdown } from "@/lib/markdown";
 import { contentMetadata } from "@/lib/page-meta";
 import { absoluteUrl } from "@/lib/site";
 
@@ -37,11 +39,16 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 export default async function ResearchPaper({ params }: Props) {
   const c = await load((await params).slug);
   const r = c.research;
-  const { html } = renderMarkdown(c.body);
+  const segments = parseDocument(c.body);
+  const { nodes, headings } = renderDoc(segments);
+  const chapters = headings.filter((h) => h.depth === 2);
+  // A long paper reads as chapters with a contents list; a short one keeps the abstract layout.
+  const longRead = chapters.length >= 3;
+  const url = absoluteUrl(pathFor(c));
 
   return (
     <article>
-      <JsonLd data={contentGraph(c, { name: "Research", path: "/research" })} />
+      <JsonLd data={contentGraph(c, { name: "Research", path: "/research" }, docGraphExtras(segments, url))} />
       <section className="wrap" style={{ paddingTop: 96, display: "flex", flexDirection: "column", gap: 22, maxWidth: 980, marginLeft: "auto", marginRight: "auto" }}>
         <span className="eyebrow">{["Research", r?.institution, c.category].filter(Boolean).join(" · ")}</span>
         <h1 className="display h-hero" style={{ fontSize: 68, lineHeight: 1.02 }}>
@@ -62,6 +69,7 @@ export default async function ResearchPaper({ params }: Props) {
         </div>
       </section>
 
+      {!longRead && (
       <section className="wrap" style={{ marginTop: 80 }}>
         <div className="split">
           <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
@@ -72,9 +80,12 @@ export default async function ResearchPaper({ params }: Props) {
               </h2>
             )}
           </div>
-          <div className="prose plain" style={{ margin: 0, padding: 0, maxWidth: "none", fontSize: 17 }} dangerouslySetInnerHTML={{ __html: html }} />
+          <div className="doc-short" >
+            {nodes}
+          </div>
         </div>
       </section>
+      )}
 
       {c.seo.key_takeaways.length > 0 && (
         <section className="wrap" style={{ marginTop: 96 }}>
@@ -92,6 +103,18 @@ export default async function ResearchPaper({ params }: Props) {
                 </li>
               ))}
             </ul>
+          </div>
+        </section>
+      )}
+
+      {longRead && (
+        <section className="wrap doc-layout" aria-label="Paper">
+          <aside className="doc-aside">
+            <Contents headings={chapters} variant="aside" />
+          </aside>
+          <div className="doc-main">
+            <Contents headings={chapters} variant="inline" />
+            {nodes}
           </div>
         </section>
       )}
