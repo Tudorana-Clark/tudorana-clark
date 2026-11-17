@@ -25,6 +25,7 @@ export default function StudioLayout({ children }: { children: React.ReactNode }
             <Link href="/studio">Content</Link>
             <Link href="/studio/write">Write</Link>
             <Link href="/studio/posts">Posts</Link>
+            <Link href="/studio/sources">Sources</Link>
             <Link href="/studio/voice">Voice</Link>
             <Link href="/studio/inbox">Inbox</Link>
             <a href="/" target="_blank" rel="noopener">

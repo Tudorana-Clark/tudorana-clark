@@ -1,6 +1,6 @@
 """Domain models and API contracts. Validation happens here, at the boundary."""
 
-from datetime import UTC, datetime
+from datetime import UTC, date, datetime
 from enum import StrEnum
 from typing import Annotated, Literal
 
@@ -489,3 +489,68 @@ class DraftResult(BaseModel):
 
 
 ResearchResult.model_rebuild()
+
+
+# ---------- Sources library: a reusable bank of evidence across articles and posts ----------
+
+LinkStatus = Literal["unchecked", "ok", "blocked", "broken"]
+
+
+class SourceFinding(BaseModel):
+    text: Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=800)]
+    added_at: datetime = Field(default_factory=utcnow)
+
+
+class LibrarySourceIn(BaseModel):
+    """Editable fields of a library source."""
+
+    model_config = ConfigDict(extra="forbid")
+    url: HttpUrl
+    title: Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=300)]
+    publisher: Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=300)]
+    published: Annotated[str, StringConstraints(strip_whitespace=True, max_length=40)] = ""  # "July 2026"
+    sponsor: ShortText = ""
+    findings: list[SourceFinding] = Field(default_factory=list, max_length=20)
+    themes: list[Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=40)]] = Field(default_factory=list, max_length=8)
+    notes: Annotated[str, StringConstraints(max_length=1000)] = ""
+
+
+class LibrarySource(LibrarySourceIn):
+    model_config = ConfigDict(extra="ignore")
+    id: str  # derived from the normalised URL, so the same link is stored once
+    type: str = "source"
+    published_on: date | None = None  # parsed from `published`, for freshness
+    link_status: LinkStatus = "unchecked"
+    link_checked_at: datetime | None = None
+    imported_from: ShortText = ""
+    used_in: list[str] = Field(default_factory=list)  # article plan ids
+    created_at: datetime = Field(default_factory=utcnow)
+    updated_at: datetime = Field(default_factory=utcnow)
+
+
+class ImportRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    text: Annotated[str, StringConstraints(min_length=20, max_length=120_000)]
+    label: Annotated[str, StringConstraints(strip_whitespace=True, max_length=120)] = ""
+
+
+class ImportCandidate(BaseModel):
+    source: LibrarySourceIn
+    existing_id: str | None = None  # already in the library: saving merges the new findings
+    link_status: LinkStatus = "unchecked"
+
+
+class ImportPreview(BaseModel):
+    candidates: list[ImportCandidate]
+    dropped: int  # sources whose link wasn't in the pasted text
+
+
+class ImportSave(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    items: list[ImportCandidate] = Field(max_length=100)
+    label: Annotated[str, StringConstraints(strip_whitespace=True, max_length=120)] = ""
+
+
+class ImportSaved(BaseModel):
+    created: int
+    merged: int

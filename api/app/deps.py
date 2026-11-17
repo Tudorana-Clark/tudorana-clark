@@ -15,6 +15,7 @@ from .articles import ArticleService
 from .config import Settings
 from .covers import CoverService
 from .errors import DomainError, RateLimited
+from .library import LibraryService
 from .media import MediaStore
 from .notify import Notifier
 from .repository import Repository
@@ -32,6 +33,7 @@ class Container:
     covers: CoverService
     studio: StudioService
     articles: ArticleService
+    library: LibraryService
 
 
 def get_container(request: Request) -> Container:

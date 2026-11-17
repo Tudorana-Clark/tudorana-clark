@@ -10,6 +10,7 @@ from datetime import UTC, timedelta
 from .article_ai import DEFAULT_PLAYBOOK, FIELD_PLACEHOLDER, ArticleWriter, normalise_url
 from .config import Settings
 from .errors import Conflict, DomainError, NotFound
+from .library import LibraryService
 from .models import (
     ArticleCheck,
     ArticleWork,
@@ -79,13 +80,16 @@ def article_words(body: str) -> int:
 
 
 class ArticleService:
-    def __init__(self, store: StudioStore, repo: Repository, content: ContentService, studio: StudioService, writer: ArticleWriter, settings: Settings) -> None:
+    def __init__(
+        self, store: StudioStore, repo: Repository, content: ContentService, studio: StudioService, writer: ArticleWriter, settings: Settings, library: LibraryService
+    ) -> None:
         self.store = store
         self.repo = repo
         self.content = content
         self.studio = studio
         self.writer = writer
         self.settings = settings
+        self.library = library
 
     # ----- Playbook -----
 
@@ -161,6 +165,11 @@ class ArticleService:
                 continue
             known.add(key)
             added.append(src.model_copy(update={"id": uuid.uuid4().hex[:12], "section": req.section}))
+        if found:
+            try:
+                await self.library.save_research(found, work.id)
+            except Exception:  # the library is a convenience; never fail the research step over it
+                log.exception("library_save_research_failed")
         room = MAX_SOURCES - len(work.sources)
         saved = await self._save(work.model_copy(update={"sources": [*work.sources, *added[:room]], "updated_at": utcnow()}))
         return ResearchResult(work=saved, added=min(len(added), room), skipped=skipped)

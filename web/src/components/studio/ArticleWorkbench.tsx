@@ -8,6 +8,7 @@ import { checkAction, deleteArticleAction, distributeAction, draftAction, outlin
 import type { ArticleSource, ArticleWork, ArticleWorkInput, ClaimCheck, OutlineSection, Post } from "@/lib/types";
 
 import { Panel, TextField } from "./fields";
+import { SourcePicker } from "./SourcePicker";
 
 type Toast = { tone: "success" | "error"; text: string } | null;
 type Busy = null | "save" | "outline" | "research" | "draft" | "check" | "distribute" | "delete";
@@ -52,6 +53,7 @@ export function ArticleWorkbench({ initial }: { initial: ArticleWork }) {
   const [posts, setPosts] = useState<Post[]>([]);
   const [askQuery, setAskQuery] = useState("");
   const [confirmDelete, setConfirmDelete] = useState(false);
+  const [pickerOpen, setPickerOpen] = useState(false);
   const ids = useId();
 
   useEffect(() => {
@@ -263,13 +265,18 @@ export function ArticleWorkbench({ initial }: { initial: ArticleWork }) {
           <Panel
             title="3. Research"
             action={
-              <button type="button" className="pill sm" disabled={isBusy || !form.outline.some((s) => s.research.trim())} onClick={() => void researchAll()}>
-                {busy === "research" ? "Researching…" : "Research all sections"}
-              </button>
+              <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+                <button type="button" className="pill ghost sm" disabled={isBusy} onClick={() => setPickerOpen(true)}>
+                  Add from library
+                </button>
+                <button type="button" className="pill sm" disabled={isBusy || !form.outline.some((s) => s.research.trim())} onClick={() => void researchAll()}>
+                  {busy === "research" ? "Researching…" : "Research the web"}
+                </button>
+              </div>
             }
           >
             <p style={{ margin: 0, fontSize: 14, color: "var(--muted)", lineHeight: 1.55 }}>
-              The researcher searches the web for recent primary sources. A finding is kept only if its link actually came back from the search, so no citation is invented. Untick anything you won’t use; only ticked sources go into the draft. Always open the link and check the figure before publishing.
+              Start with your library (it includes everything you’ve imported or researched before), then search the web for gaps. The researcher looks for recent primary sources and saves what it finds to your library. A finding is kept only if its link actually came back from the search, so no citation is invented. Untick anything you won’t use; only ticked sources go into the draft. Always open the link and check the figure before publishing.
             </p>
             {form.outline
               .filter((s) => s.research.trim())
@@ -325,6 +332,17 @@ export function ArticleWorkbench({ initial }: { initial: ArticleWork }) {
               </div>
             ))}
 
+            <SourcePicker
+              open={pickerOpen}
+              onClose={() => setPickerOpen(false)}
+              sections={form.outline}
+              initialQuery={form.headline || form.insight.slice(0, 120)}
+              alreadyAdded={new Set(form.sources.map((s) => `${s.url}|${s.finding}`))}
+              onAdd={(src) => {
+                if (form.sources.length >= 40) return setToast({ tone: "error", text: "This plan already has 40 sources. Remove some you won’t use first." });
+                update("sources", [...form.sources, src]);
+              }}
+            />
             <details>
               <summary style={{ cursor: "pointer", fontSize: 14, fontWeight: 500 }}>Add a source you already have</summary>
               <form

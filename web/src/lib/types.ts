@@ -295,3 +295,47 @@ export interface ArticleWork extends ArticleWorkInput {
   created_at: string;
   updated_at: string;
 }
+
+// ---------- Sources library ----------
+
+export type LinkStatus = "unchecked" | "ok" | "blocked" | "broken";
+
+export interface SourceFinding {
+  text: string;
+  added_at: string;
+}
+
+export interface LibrarySourceInput {
+  url: string;
+  title: string;
+  publisher: string;
+  published: string;
+  sponsor: string;
+  findings: SourceFinding[];
+  themes: string[];
+  notes: string;
+}
+
+export interface LibrarySource extends LibrarySourceInput {
+  id: string;
+  published_on: string | null;
+  link_status: LinkStatus;
+  link_checked_at: string | null;
+  imported_from: string;
+  used_in: string[];
+  created_at: string;
+  updated_at: string;
+}
+
+export interface ImportCandidate {
+  source: LibrarySourceInput;
+  existing_id: string | null;
+  link_status: LinkStatus;
+}
+
+/** Fresh: published within 12 months. Unknown dates are treated as needing a check. */
+export function freshness(published_on: string | null, now = new Date()): "fresh" | "ageing" | "stale" | "undated" {
+  if (!published_on) return "undated";
+  const months = (now.getFullYear() - Number(published_on.slice(0, 4))) * 12 + (now.getMonth() + 1 - Number(published_on.slice(5, 7)));
+  return months <= 6 ? "fresh" : months <= 12 ? "ageing" : "stale";
+}

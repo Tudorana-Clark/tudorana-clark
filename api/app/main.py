@@ -22,6 +22,7 @@ from .config import Settings, get_settings
 from .covers import CoverService, ImageClient, MaiImageClient, OfflineImageClient, UnconfiguredImageClient, load_references
 from .deps import Container
 from .errors import DomainError
+from .library import LibraryService
 from .media import BlobMediaStore, MediaStore, MemoryMediaStore
 from .notify import Notifier, NullNotifier, ResendNotifier
 from .repository import CosmosRepository, MemoryRepository, Repository
@@ -109,6 +110,7 @@ def build_container(settings: Settings, credential: DefaultAzureCredential | Non
     notifier: Notifier = ResendNotifier(key, settings.notify_email, settings.notify_from, settings.site_url) if key else NullNotifier()
     content = ContentService(repo, settings)
     studio = StudioService(store, repo, writer)
+    library = LibraryService(store, writer)
     return Container(
         repo=repo,
         media=media,
@@ -117,7 +119,8 @@ def build_container(settings: Settings, credential: DefaultAzureCredential | Non
         notifier=notifier,
         covers=covers,
         studio=studio,
-        articles=ArticleService(store, repo, content, studio, article_writer, settings),
+        articles=ArticleService(store, repo, content, studio, article_writer, settings, library),
+        library=library,
     )
 
 

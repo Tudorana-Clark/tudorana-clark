@@ -3,7 +3,7 @@ import "server-only";
 import { unstable_rethrow } from "next/navigation";
 
 import { env } from "./env";
-import type { ArticleWork, ContactMessage, Content, ContentSummary, CoverBrief, CoverResult, Idea, Kind, Playbook, Post, PostCopy, SeoSuggestion, Subscriber, VoiceProfile } from "./types";
+import type { ArticleWork, ContactMessage, ImportCandidate, LibrarySource, Content, ContentSummary, CoverBrief, CoverResult, Idea, Kind, Playbook, Post, PostCopy, SeoSuggestion, Subscriber, VoiceProfile } from "./types";
 
 interface ContentList {
   items: ContentSummary[];
@@ -160,5 +160,13 @@ export const studio = {
   research: (id: string, input: { section: string; query: string }) => request<{ work: ArticleWork; added: number; skipped: number }>(`${S}/articles/${encodeURIComponent(id)}/research`, json("POST", input, 180_000)),
   draft: (id: string) => request<{ work: ArticleWork; content: Content }>(`${S}/articles/${encodeURIComponent(id)}/draft`, json("POST", {}, 180_000)),
   check: (id: string) => request<ArticleWork>(`${S}/articles/${encodeURIComponent(id)}/check`, json("POST", {}, 150_000)),
+  sources: () => request<LibrarySource[]>(`${S}/sources`, get),
+  // Extraction reads the whole paste, then every link is checked: allow a few minutes for long reports.
+  previewImport: (text: string, label: string) => request<{ candidates: ImportCandidate[]; dropped: number }>(`${S}/sources/import/preview`, json("POST", { text, label }, 240_000)),
+  saveImport: (items: ImportCandidate[], label: string) => request<{ created: number; merged: number }>(`${S}/sources/import`, json("POST", { items, label })),
+  updateSource: (id: string, input: unknown) => request<LibrarySource>(`${S}/sources/${encodeURIComponent(id)}`, json("PUT", input)),
+  checkSource: (id: string) => request<LibrarySource>(`${S}/sources/${encodeURIComponent(id)}/check`, json("POST", {}, 30_000)),
+  checkSources: () => request<LibrarySource[]>(`${S}/sources/check`, json("POST", {}, 120_000)),
+  deleteSource: (id: string) => request<void>(`${S}/sources/${encodeURIComponent(id)}`, { method: "DELETE", admin: true, cache: "no-store" }),
   distribute: (id: string) => request<Post[]>(`${S}/articles/${encodeURIComponent(id)}/distribute`, json("POST", {}, 120_000)),
 };

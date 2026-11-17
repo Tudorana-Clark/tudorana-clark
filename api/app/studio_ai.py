@@ -81,6 +81,30 @@ class _PostOut(BaseModel):
     hook: str = Field(description="At most 140 characters: one quotable line in the author's voice for a quote card. No hashtags, no quotation marks.")
 
 
+class _ExtractedSource(BaseModel):
+    url: str = Field(description="The source's URL, copied exactly as it appears in the text.")
+    title: str = Field(description="Title of the report, page or article.")
+    publisher: str = Field(description="The organisation that published it, e.g. 'Office for National Statistics' or 'KPMG'.")
+    published: str = Field(description="Month and year of publication as stated, e.g. 'June 2026'. Empty if the text doesn't say.")
+    sponsor: str = Field(description="Who sponsored or paid for the research, if the text says. Empty otherwise.")
+    findings: list[str] = Field(description="Each statistic or quotable finding attributed to this source, with figures exactly as written.")
+    themes: list[str] = Field(description="1-3 short topic tags in Title Case, e.g. 'AI Adoption', 'Small Business', 'Jobs', 'Skills', 'Productivity', 'UK Economy'.")
+
+
+class _Extracted(BaseModel):
+    sources: list[_ExtractedSource]
+
+
+class ExtractedSource(BaseModel):
+    url: str
+    title: str
+    publisher: str
+    published: str
+    sponsor: str
+    findings: list[str]
+    themes: list[str]
+
+
 # ---------- Protocol and implementations ----------
 
 
@@ -89,6 +113,7 @@ class StudioWriter(Protocol):
     async def learn_voice(self, samples: list[tuple[str, str]]) -> str: ...
     async def mine_ideas(self, title: str, kind: str, body: str, voice: str) -> list[tuple[str, str]]: ...
     async def write_post(self, seed: str, source: str, voice: str, current: PostCopy | None, instruction: str) -> PostCopy: ...
+    async def extract_sources(self, text: str) -> list[ExtractedSource]: ...
     async def close(self) -> None: ...
 
 
@@ -166,6 +191,26 @@ class AzureStudioWriter:
         out = await self._parse(system, "\n\n".join(parts), _PostOut, 0.7, "write_post")
         return _to_copy(out)
 
+    async def extract_sources(self, text: str) -> list[ExtractedSource]:
+        system = (
+            "You turn research notes (often a report written by another AI assistant) into a structured list of sources. "
+            "Include a source only if its URL appears in the text; copy URLs exactly. Group every finding under the source it is attributed to. "
+            "Copy figures and wording exactly; never round, combine or add findings. Skip the notes' own commentary and conclusions."
+        )
+        out = await self._parse(system, text[:120_000], _Extracted, 0.0, "extract_sources")
+        return [
+            ExtractedSource(
+                url=x.url.strip(),
+                title=clip(x.title, 300),
+                publisher=clip(x.publisher, 300),
+                published=clip(x.published, 40),
+                sponsor=clip(x.sponsor, 300),
+                findings=[clip(f, 800) for f in x.findings[:20] if f.strip()],
+                themes=[clip(t, 40) for t in x.themes[:3] if t.strip()],
+            )
+            for x in out.sources[:100]
+        ]
+
     async def close(self) -> None:
         await self._client.close()
 
@@ -194,6 +239,14 @@ class OfflineStudioWriter:
         if current and instruction:
             return PostCopy(linkedin=clip(f"{current.linkedin}\n\n({instruction})", 3000), x=current.x, hook=current.hook)
         return PostCopy(linkedin=f"{base}\n\nWhat have you seen?", x=clip(base, 260), hook=clip(base, 140))
+
+    async def extract_sources(self, text: str) -> list[ExtractedSource]:
+        import re
+
+        out = []
+        for i, url in enumerate(dict.fromkeys(re.findall(r"https?://[^\s)\]>\"']+", text))):
+            out.append(ExtractedSource(url=url.rstrip(".,;"), title=f"Source {i + 1}", publisher="Unknown publisher", published="", sponsor="", findings=[], themes=[]))
+        return out
 
     async def close(self) -> None:
         return None

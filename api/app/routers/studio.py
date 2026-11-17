@@ -9,6 +9,12 @@ from ..models import (
     DraftResult,
     Idea,
     IdeaIn,
+    ImportPreview,
+    ImportRequest,
+    ImportSave,
+    ImportSaved,
+    LibrarySource,
+    LibrarySourceIn,
     MineResult,
     Playbook,
     PlaybookIn,
@@ -159,3 +165,41 @@ async def check_article(work_id: str, c: ContainerDep) -> ArticleWork:
 async def distribute_article(work_id: str, c: ContainerDep) -> list[Post]:
     _, posts = await c.articles.distribute(work_id)
     return posts
+
+
+# ---------- Sources library ----------
+
+
+@router.get("/sources", response_model=list[LibrarySource])
+async def list_sources(c: ContainerDep) -> list[LibrarySource]:
+    return await c.library.list_all()
+
+
+@router.post("/sources/import/preview", response_model=ImportPreview)
+async def preview_import(body: ImportRequest, c: ContainerDep) -> ImportPreview:
+    return await c.library.preview_import(body)
+
+
+@router.post("/sources/import", response_model=ImportSaved)
+async def save_import(body: ImportSave, c: ContainerDep) -> ImportSaved:
+    return await c.library.save_import(body)
+
+
+@router.post("/sources/check", response_model=list[LibrarySource])
+async def check_sources(c: ContainerDep) -> list[LibrarySource]:
+    return await c.library.check_batch()
+
+
+@router.put("/sources/{source_id}", response_model=LibrarySource)
+async def update_source(source_id: str, body: LibrarySourceIn, c: ContainerDep) -> LibrarySource:
+    return await c.library.update(source_id, body)
+
+
+@router.post("/sources/{source_id}/check", response_model=LibrarySource)
+async def check_source(source_id: str, c: ContainerDep) -> LibrarySource:
+    return await c.library.check(source_id)
+
+
+@router.delete("/sources/{source_id}", status_code=status.HTTP_204_NO_CONTENT)
+async def delete_source(source_id: str, c: ContainerDep) -> None:
+    await c.library.delete(source_id)
