@@ -2,6 +2,8 @@ import Link from "next/link";
 import type { ReactNode } from "react";
 
 import { serializeJsonLd } from "@/lib/jsonld";
+
+import { CoverArt } from "./CoverArt";
 import type { Image as Img } from "@/lib/types";
 
 export function JsonLd({ data }: { data: Record<string, unknown> }) {
@@ -25,13 +27,33 @@ export function PlayIcon() {
 }
 
 /**
- * Media slot. Renders the image when one exists, otherwise the design's neutral tile
- * (decorative, hidden from assistive tech) so layouts never collapse.
+ * Media slot. Renders the image when one exists; otherwise generated cover art (when a `fallback` seed is given)
+ * or the design's neutral tile. Both fallbacks are decorative and hidden from assistive tech.
  */
-export function Media({ image, style, tone = "light", priority = false, sizes = "100vw", focus = "50% 50%", children }: { image?: Img | null; style?: React.CSSProperties; tone?: "light" | "dark" | "warm"; priority?: boolean; sizes?: string; focus?: string; children?: ReactNode }) {
+export function Media({
+  image,
+  style,
+  tone = "light",
+  priority = false,
+  sizes = "100vw",
+  focus = "50% 50%",
+  fallback,
+  children,
+}: {
+  image?: Img | null;
+  style?: React.CSSProperties;
+  tone?: "light" | "dark" | "warm";
+  priority?: boolean;
+  sizes?: string;
+  focus?: string;
+  /** Seed (usually the slug) for generated cover art when there is no image. Omit for photo slots like portraits. */
+  fallback?: string;
+  children?: ReactNode;
+}) {
   const bg = tone === "dark" ? "var(--navy-2)" : tone === "warm" ? "var(--placeholder-2)" : "var(--placeholder)";
   return (
     <div className="placeholder" style={{ background: bg, ...style }} aria-hidden={image ? undefined : true}>
+      {!image && fallback && <CoverArt seed={fallback} tone={tone === "dark" ? "dark" : "light"} />}
       {image && (
         // Plain <img>: media lives on Blob Storage with immutable caching; no optimiser container needed.
         // eslint-disable-next-line @next/next/no-img-element

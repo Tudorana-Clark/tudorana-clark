@@ -12,6 +12,7 @@ from fastapi import Depends, Header, Request
 
 from .ai import SeoGenerator
 from .config import Settings
+from .covers import CoverService
 from .errors import DomainError, RateLimited
 from .media import MediaStore
 from .notify import Notifier
@@ -26,6 +27,7 @@ class Container:
     ai: SeoGenerator
     content: ContentService
     notifier: Notifier
+    covers: CoverService
 
 
 def get_container(request: Request) -> Container:

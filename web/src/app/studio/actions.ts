@@ -8,7 +8,7 @@ import { z } from "zod";
 import { admin, ApiError, CONTENT_TAG } from "@/lib/api";
 import { env, passwordLoginEnabled } from "@/lib/env";
 import { createSessionToken, passwordMatches, SESSION_COOKIE, SESSION_TTL_SECONDS, verifySessionToken } from "@/lib/session";
-import type { ActionResult, Content, ContentInput, SeoSuggestion } from "@/lib/types";
+import type { ActionResult, Content, ContentInput, CoverResult, SeoSuggestion } from "@/lib/types";
 
 // ---------- Session ----------
 
@@ -75,6 +75,7 @@ const inputSchema = z.object({
   category: z.string().max(300),
   tags: z.array(z.string().trim().min(1).max(40)).max(12),
   feature_image: imageSchema.nullable(),
+  cover: z.object({ style_version: z.string().min(1).max(40), model: z.string().min(1).max(120), concept: z.string().max(300), generated_at: z.string().min(1) }).nullable(),
   featured: z.boolean(),
   seo: z.object({
     meta_title: z.string().max(70, "Meta title must be 70 characters or fewer."),
@@ -110,6 +111,8 @@ function clean(input: ContentInput) {
   return {
     data: {
       ...d,
+      // A cover record only describes an AI image; never keep it without one.
+      cover: d.feature_image ? d.cover : null,
       seo: { ...d.seo, faq: d.seo.faq.filter((f) => f.question && f.answer), key_takeaways: d.seo.key_takeaways.filter(Boolean) },
       event: d.kind === "talk" || d.kind === "video" ? d.event : null,
       video: d.kind === "video" ? d.video : null,
@@ -161,6 +164,29 @@ export async function generateSeoAction(input: { kind: ContentInput["kind"]; tit
   if (input.body.trim().split(/\s+/).length < 40) return { ok: false, error: "Write at least a few paragraphs (40+ words) for useful SEO suggestions." };
   try {
     return { ok: true, data: await admin.seo(input), message: "SEO, summary and social posts generated. Review and edit before publishing." };
+  } catch (err) {
+    return fail(err);
+  }
+}
+
+const coverSchema = z.object({
+  kind: z.enum(["article", "research", "note", "talk", "video"]),
+  title: z.string().trim().min(1, "Add a title first so the cover matches the piece.").max(200),
+  body: z.string().max(200_000),
+  category: z.string().max(300),
+  concept: z.string().trim().max(300, "Keep the cover idea under 300 characters."),
+  literal: z.boolean(),
+});
+
+export async function generateCoversAction(input: z.input<typeof coverSchema>): Promise<ActionResult<CoverResult>> {
+  await requireSession();
+  const parsed = coverSchema.safeParse(input);
+  if (!parsed.success) return { ok: false, error: parsed.error.issues[0]?.message ?? "Check the cover idea." };
+  try {
+    const data = await admin.covers(parsed.data);
+    const n = data.candidates.length;
+    const message = data.failed ? `${n} of ${n + data.failed} options rendered. Pick one, or generate again.` : `${n} options ready. Pick one to use it.`;
+    return { ok: true, data, message };
   } catch (err) {
     return fail(err);
   }

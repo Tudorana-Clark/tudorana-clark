@@ -40,6 +40,15 @@ class Settings(BaseSettings):
     openai_api_version: str = "2024-10-21"
     openai_timeout_seconds: float = 45.0
 
+    # AI cover images (MAI image model on a Microsoft Foundry resource). Empty endpoint uses offline placeholders.
+    image_endpoint: str = ""  # https://<foundry-resource>.services.ai.azure.com
+    image_deployment: str = "MAI-Image-2.6-Flash"
+    image_timeout_seconds: float = 120.0
+    # MAI-Image-2.6 allows up to 2,359,296 px; MAI-Image-2.5 up to 1,048,576 (use 1280x800). Each side >= 768.
+    cover_width: int = Field(default=1600, ge=768, le=2048)
+    cover_height: int = Field(default=1000, ge=768, le=2048)
+    cover_candidates: int = Field(default=3, ge=1, le=4)
+
     # IndexNow (Bing, Copilot, Yandex, Seznam, Naver). Empty disables pings.
     indexnow_key: str = ""
 

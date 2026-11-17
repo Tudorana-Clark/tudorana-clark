@@ -76,7 +76,7 @@ export default async function SpeakingPage() {
           <>
             <div className="stack-sm" style={{ display: "grid", gridTemplateColumns: "minmax(0,2fr) minmax(0,1fr)", gap: 16 }}>
               <Link href={pathFor(featured)} aria-label={`Watch ${featured.title}`}>
-                <Media image={featured.video?.thumbnail ?? featured.feature_image} tone="dark" style={{ aspectRatio: "16 / 9", borderRadius: 24, display: "flex", alignItems: "center", justifyContent: "center" }}>
+                <Media image={featured.video?.thumbnail ?? featured.feature_image} fallback={featured.slug} tone="dark" style={{ aspectRatio: "16 / 9", borderRadius: 24, display: "flex", alignItems: "center", justifyContent: "center" }}>
                   <span className="play" style={{ width: 84, height: 84, position: "absolute" }}>
                     <PlayIcon />
                   </span>

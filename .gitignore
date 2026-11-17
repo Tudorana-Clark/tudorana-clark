@@ -12,3 +12,4 @@ __pycache__/
 .mypy_cache/
 infra/outputs.json
 .DS_Store
+/.covers/

@@ -60,6 +60,29 @@ export interface ResearchInfo {
   stats: Stat[];
 }
 
+/** Provenance of an AI-generated cover; present only while feature_image is that cover. */
+export interface CoverInfo {
+  style_version: string;
+  model: string;
+  concept: string;
+  generated_at: string;
+}
+
+export interface CoverCandidate {
+  url: string;
+  width: number;
+  height: number;
+}
+
+export interface CoverResult {
+  concept: string;
+  style_version: string;
+  model: string;
+  alt: string;
+  candidates: CoverCandidate[];
+  failed: number;
+}
+
 export interface ContentInput {
   kind: Kind;
   title: string;
@@ -70,6 +93,7 @@ export interface ContentInput {
   category: string;
   tags: string[];
   feature_image: Image | null;
+  cover: CoverInfo | null;
   featured: boolean;
   seo: SeoPack;
   social: SocialCopy;
@@ -140,5 +164,5 @@ export const emptySocial = (): SocialCopy => ({ linkedin: "", x: "", facebook: "
 
 /** A fresh, valid draft for the studio editor. */
 export function blankInput(kind: Kind = "article"): ContentInput {
-  return { kind, title: "", slug: null, subtitle: "", excerpt: "", body: "", category: kind === "article" ? "Artificial Intelligence" : "", tags: [], feature_image: null, featured: false, seo: emptySeo(), social: emptySocial(), event: null, video: null, research: null };
+  return { kind, title: "", slug: null, subtitle: "", excerpt: "", body: "", category: kind === "article" ? "Artificial Intelligence" : "", tags: [], feature_image: null, cover: null, featured: false, seo: emptySeo(), social: emptySocial(), event: null, video: null, research: null };
 }

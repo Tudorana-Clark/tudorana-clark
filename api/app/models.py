@@ -85,6 +85,15 @@ class ResearchInfo(BaseModel):
     stats: list[Stat] = Field(default_factory=list, max_length=8)
 
 
+class CoverInfo(BaseModel):
+    """Provenance of an AI-generated feature image, so covers can be audited and re-rendered when the style kit changes."""
+
+    style_version: Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=40)]
+    model: Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=120)]
+    concept: ShortText
+    generated_at: datetime
+
+
 class ContentIn(BaseModel):
     """What the studio sends when creating or updating a piece of content."""
 
@@ -99,6 +108,8 @@ class ContentIn(BaseModel):
     category: ShortText = ""
     tags: list[ShortText] = Field(default_factory=list, max_length=12)
     feature_image: Image | None = None
+    # Set only while feature_image is an AI cover; cleared when a real photo is uploaded.
+    cover: CoverInfo | None = None
     featured: bool = False
     seo: SeoPack = Field(default_factory=SeoPack)
     social: SocialCopy = Field(default_factory=SocialCopy)
@@ -168,6 +179,35 @@ class SeoSuggestion(BaseModel):
     tags: list[str]
     slug: str
     image_alt_hint: str
+
+
+class CoverRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    kind: Kind
+    title: Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=200)]
+    body: Annotated[str, StringConstraints(max_length=200_000)] = ""
+    category: ShortText = ""
+    # The author's idea, in any words. The AI turns it into a concrete scene; empty means it proposes one from the piece.
+    concept: Annotated[str, StringConstraints(strip_whitespace=True, max_length=300)] = ""
+    # True when `concept` is already a visual scene (e.g. one returned earlier) and should be rendered as-is.
+    literal: bool = False
+
+
+class CoverCandidate(BaseModel):
+    url: HttpUrl
+    width: int
+    height: int
+
+
+class CoverResult(BaseModel):
+    concept: str
+    style_version: str
+    model: str
+    alt: str
+    candidates: list[CoverCandidate]
+    # How many of the requested renders failed (shown so a partial result isn't mistaken for the whole set).
+    failed: int = 0
 
 
 class SubscribeIn(BaseModel):

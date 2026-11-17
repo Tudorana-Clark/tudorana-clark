@@ -35,7 +35,7 @@ def sniff(data: bytes) -> tuple[str, str]:
 
 
 class MediaStore(Protocol):
-    async def put(self, data: bytes) -> tuple[str, str]: ...
+    async def put(self, data: bytes, prefix: str = "") -> tuple[str, str]: ...
     async def close(self) -> None: ...
 
 
@@ -45,9 +45,9 @@ class BlobMediaStore:
         self._container = container
         self._base_url = base_url.rstrip("/")
 
-    async def put(self, data: bytes) -> tuple[str, str]:
+    async def put(self, data: bytes, prefix: str = "") -> tuple[str, str]:
         ctype, ext = sniff(data)
-        name = f"{datetime.now(UTC):%Y/%m}/{uuid.uuid4().hex}.{ext}"
+        name = f"{prefix.strip('/') + '/' if prefix else ''}{datetime.now(UTC):%Y/%m}/{uuid.uuid4().hex}.{ext}"
         try:
             blob = self._service.get_blob_client(self._container, name)
             await blob.upload_blob(
@@ -68,9 +68,9 @@ class MemoryMediaStore:
     def __init__(self) -> None:
         self.files: dict[str, bytes] = {}
 
-    async def put(self, data: bytes) -> tuple[str, str]:
+    async def put(self, data: bytes, prefix: str = "") -> tuple[str, str]:
         ctype, ext = sniff(data)
-        name = f"{uuid.uuid4().hex}.{ext}"
+        name = f"{prefix.strip('/') + '/' if prefix else ''}{uuid.uuid4().hex}.{ext}"
         self.files[name] = data
         return f"https://media.example.test/{name}", ctype
 

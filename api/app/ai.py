@@ -54,8 +54,21 @@ _SYSTEM = (
 )
 
 
+_CONCEPT_SYSTEM = (
+    "You are the art director for {site}. Turn the piece below into ONE visual metaphor for a flat, hand-drawn editorial illustration. "
+    "If the author gives a direction, it is the idea to express: keep its meaning, but make it something that can be drawn. "
+    "Describe a concrete scene in 10-25 words using at most two or three elements: the objects or simple figures and what they are doing. "
+    "Minimal beats busy: no backgrounds full of detail, no crowds. "
+    "Prefer clever, specific metaphors that make the argument visible (contrast of scale, balance, growth, paths, tools, light). "
+    "Simple faceless figures and hands are allowed. Never include text, letters, numbers, logos, screens or interfaces. "
+    "Avoid clichés: robots, glowing brains, circuit boards, binary code, handshakes, lightbulbs, chess pieces, rockets, puzzle pieces. "
+    "Reply with the scene only, no quotes and no full stop."
+)
+
+
 class SeoGenerator(Protocol):
     async def generate(self, req: SeoRequest) -> SeoSuggestion: ...
+    async def concept(self, req: SeoRequest, direction: str = "") -> str: ...
     async def close(self) -> None: ...
 
 
@@ -102,6 +115,7 @@ class AzureSeoGenerator:
         )
         self._deployment = deployment
         self._system = _SYSTEM.format(site=site, author=author)
+        self._concept_system = _CONCEPT_SYSTEM.format(site=site)
 
     async def generate(self, req: SeoRequest) -> SeoSuggestion:
         source = plain_text(req.body)[:_MAX_INPUT_CHARS]
@@ -125,6 +139,28 @@ class AzureSeoGenerator:
             raise UpstreamUnavailable("The AI assistant couldn’t produce suggestions for this text. Try adding more body copy.")
         return to_suggestion(parsed)
 
+    async def concept(self, req: SeoRequest, direction: str = "") -> str:
+        source = plain_text(req.body)[:6_000]
+        lead = f"Author's direction: {direction}\n" if direction else ""
+        user = f"{lead}Content type: {req.kind.value}\nCategory: {req.category or 'n/a'}\nTitle: {req.title}\n\n---\n{source}"
+        try:
+            completion = await self._client.chat.completions.create(
+                model=self._deployment,
+                messages=[{"role": "system", "content": self._concept_system}, {"role": "user", "content": user}],
+                temperature=0.8,
+                max_tokens=90,
+            )
+        except APITimeoutError as exc:
+            log.warning("ai_concept_timeout")
+            raise UpstreamUnavailable("The AI assistant took too long to suggest a cover idea. Type one yourself or try again.") from exc
+        except APIError as exc:
+            log.exception("ai_concept_failed")
+            raise UpstreamUnavailable("The AI assistant couldn’t suggest a cover idea right now. Type one yourself or try again.") from exc
+        text = (completion.choices[0].message.content or "").strip().strip('"“”.').strip()
+        if not text:
+            raise UpstreamUnavailable("The AI assistant couldn’t suggest a cover idea for this piece. Type one yourself.")
+        return _clip(text, 300)
+
     async def close(self) -> None:
         await self._client.close()
 
@@ -143,6 +179,9 @@ class OfflineSeoGenerator:
             slug=slugify(req.title),
             image_alt_hint="",
         )
+
+    async def concept(self, req: SeoRequest, direction: str = "") -> str:
+        return f"a simple drawn scene expressing {_clip((direction or req.title).lower(), 160)}"
 
     async def close(self) -> None:
         return None

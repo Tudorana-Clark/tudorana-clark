@@ -3,7 +3,7 @@ import "server-only";
 import { unstable_rethrow } from "next/navigation";
 
 import { env } from "./env";
-import type { ContactMessage, Content, ContentSummary, Kind, SeoSuggestion, Subscriber } from "./types";
+import type { ContactMessage, Content, ContentSummary, CoverResult, Kind, SeoSuggestion, Subscriber } from "./types";
 
 interface ContentList {
   items: ContentSummary[];
@@ -120,6 +120,8 @@ export const admin = {
     request<Content>(`/v1/admin/content/${encodeURIComponent(id)}/${status}`, { method: "POST", admin: true, cache: "no-store" }),
   remove: (id: string) => request<void>(`/v1/admin/content/${encodeURIComponent(id)}`, { method: "DELETE", admin: true, cache: "no-store" }),
   seo: (input: unknown) => request<SeoSuggestion>("/v1/admin/ai/seo", { method: "POST", body: JSON.stringify(input), admin: true, cache: "no-store", timeoutMs: 60_000 }),
+  // Up to 4 renders in parallel, each with retries on 429: allow well beyond a single render.
+  covers: (input: unknown) => request<CoverResult>("/v1/admin/ai/covers", { method: "POST", body: JSON.stringify(input), admin: true, cache: "no-store", timeoutMs: 180_000 }),
   upload: (form: FormData) => request<{ url: string; content_type: string; bytes: number }>("/v1/admin/media", { method: "POST", body: form, admin: true, cache: "no-store", timeoutMs: 30_000 }),
   subscribers: () => request<Subscriber[]>("/v1/admin/subscribers", { admin: true, cache: "no-store" }),
   messages: () => request<ContactMessage[]>("/v1/admin/messages", { admin: true, cache: "no-store" }),

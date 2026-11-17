@@ -42,8 +42,8 @@ export function VideoCard({ item }: { item: ContentSummary }) {
   const thumb = item.video?.thumbnail ?? item.feature_image;
   return (
     <Link href={pathFor(item)} style={{ display: "flex", flexDirection: "column", gap: 14, color: "var(--ink)" }}>
-      <Media image={thumb} style={{ aspectRatio: "16 / 10", display: "flex", alignItems: "center", justifyContent: "center" }} sizes="(max-width: 860px) 100vw, 400px">
-        <span className="play" style={{ position: thumb ? "absolute" : "static" }}>
+      <Media image={thumb} fallback={item.slug} style={{ aspectRatio: "16 / 10", display: "flex", alignItems: "center", justifyContent: "center" }} sizes="(max-width: 860px) 100vw, 400px">
+        <span className="play" style={{ position: "relative" }}>
           <PlayIcon />
         </span>
       </Media>

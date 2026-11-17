@@ -17,6 +17,7 @@ from fastapi.responses import JSONResponse
 
 from .ai import AzureSeoGenerator, OfflineSeoGenerator, SeoGenerator
 from .config import Settings, get_settings
+from .covers import CoverService, ImageClient, MaiImageClient, OfflineImageClient, UnconfiguredImageClient, load_references
 from .deps import Container
 from .errors import DomainError
 from .media import BlobMediaStore, MediaStore, MemoryMediaStore
@@ -70,9 +71,18 @@ def build_container(settings: Settings, credential: DefaultAzureCredential | Non
         )
     else:
         ai = OfflineSeoGenerator()
+    images: ImageClient
+    if settings.image_endpoint and credential is not None:
+        images = MaiImageClient(settings.image_endpoint, settings.image_deployment, settings.cover_width, settings.cover_height, settings.image_timeout_seconds, credential)
+    elif settings.storage_backend == "memory":
+        images = OfflineImageClient(settings.cover_width, settings.cover_height)
+    else:
+        # Real storage but no Foundry endpoint: fail clearly rather than upload placeholder art.
+        images = UnconfiguredImageClient()
+    covers = CoverService(images, ai, media, settings.cover_width, settings.cover_height, settings.cover_candidates, load_references())
     key = settings.resend_api_key.get_secret_value()
     notifier: Notifier = ResendNotifier(key, settings.notify_email, settings.notify_from, settings.site_url) if key else NullNotifier()
-    return Container(repo=repo, media=media, ai=ai, content=ContentService(repo, settings), notifier=notifier)
+    return Container(repo=repo, media=media, ai=ai, content=ContentService(repo, settings), notifier=notifier, covers=covers)
 
 
 def create_app(settings: Settings | None = None) -> FastAPI:
@@ -81,15 +91,14 @@ def create_app(settings: Settings | None = None) -> FastAPI:
 
     @asynccontextmanager
     async def lifespan(app: FastAPI) -> AsyncIterator[None]:
-        needs_azure = settings.storage_backend == "cosmos" or bool(settings.openai_endpoint)
-        credential = (
-            DefaultAzureCredential(managed_identity_client_id=settings.azure_client_id or None) if needs_azure else None
-        )
+        needs_azure = settings.storage_backend == "cosmos" or bool(settings.openai_endpoint) or bool(settings.image_endpoint)
+        credential = DefaultAzureCredential(managed_identity_client_id=settings.azure_client_id or None) if needs_azure else None
         if settings.environment == "production" and not settings.admin_api_key.get_secret_value():
             raise RuntimeError("ADMIN_API_KEY must be set in production")
         app.state.settings = settings
         app.state.container = build_container(settings, credential)
-        log.info("api_started", extra={"backend": settings.storage_backend, "ai": bool(settings.openai_endpoint), "email": bool(settings.resend_api_key.get_secret_value())})
+        features = {"ai": bool(settings.openai_endpoint), "images": bool(settings.image_endpoint), "email": bool(settings.resend_api_key.get_secret_value())}
+        log.info("api_started", extra={"backend": settings.storage_backend, **features})
         try:
             yield
         finally:
@@ -97,6 +106,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
             await c.repo.close()
             await c.media.close()
             await c.ai.close()
+            await c.covers.images.close()
             await c.notifier.close()
             if credential is not None:
                 await credential.close()

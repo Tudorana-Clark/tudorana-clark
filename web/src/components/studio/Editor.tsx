@@ -7,6 +7,7 @@ import { deleteContentAction, generateSeoAction, saveContentAction, setStatusAct
 import { KIND_LABEL, pathFor } from "@/lib/content";
 import { type Content, type ContentInput, KINDS, type SocialCopy } from "@/lib/types";
 
+import { CoverGenerator } from "./CoverGenerator";
 import { DatePicker } from "./DatePicker";
 import { LinesField, Panel, TextField } from "./fields";
 import { MarkdownEditor } from "./MarkdownEditor";
@@ -18,8 +19,8 @@ import { useUpload } from "./useUpload";
 type Toast = { tone: "success" | "error"; text: string } | null;
 
 function toInput(c: Content): ContentInput {
-  const { kind, title, slug, subtitle, excerpt, body, category, tags, feature_image, featured, seo, social, event, video, research } = c;
-  return { kind, title, slug, subtitle, excerpt, body, category, tags, feature_image, featured, seo, social, event, video, research };
+  const { kind, title, slug, subtitle, excerpt, body, category, tags, feature_image, cover, featured, seo, social, event, video, research } = c;
+  return { kind, title, slug, subtitle, excerpt, body, category, tags, feature_image, cover: cover ?? null, featured, seo, social, event, video, research };
 }
 
 const SOCIAL: { key: keyof SocialCopy; label: string; max: number; share?: (text: string, url: string) => string }[] = [
@@ -156,7 +157,10 @@ export function Editor({ initial, siteUrl, tagSuggestions }: { initial: Content 
   async function onFeature(file: File | undefined) {
     if (!file) return;
     const url = await feature.upload(file);
-    if (url) update("feature_image", { url, alt: form.feature_image?.alt ?? "" });
+    if (!url) return;
+    // A real photo replaces any AI cover; don't carry the AI alt text or provenance over.
+    setForm((f) => ({ ...f, feature_image: { url, alt: f.cover ? "" : (f.feature_image?.alt ?? "") }, cover: null }));
+    setDirty(true);
   }
 
   const busy = pending || aiBusy;
@@ -286,7 +290,14 @@ export function Editor({ initial, siteUrl, tagSuggestions }: { initial: Content 
                   <button type="button" className="pill ghost sm" onClick={() => featureInput.current?.click()} disabled={feature.busy}>
                     Replace
                   </button>
-                  <button type="button" className="pill ghost sm" onClick={() => update("feature_image", null)}>
+                  <button
+                    type="button"
+                    className="pill ghost sm"
+                    onClick={() => {
+                      setForm((f) => ({ ...f, feature_image: null, cover: null }));
+                      setDirty(true);
+                    }}
+                  >
                     Remove
                   </button>
                 </div>
@@ -312,6 +323,19 @@ export function Editor({ initial, siteUrl, tagSuggestions }: { initial: Content 
                 {feature.error}
               </p>
             )}
+            {form.cover && (
+              <p className="form-note" style={{ color: "var(--muted)" }}>
+                AI cover · style {form.cover.style_version}
+              </p>
+            )}
+            <CoverGenerator
+              form={form}
+              selectedUrl={form.feature_image?.url ?? null}
+              onPick={(image, cover) => {
+                setForm((f) => ({ ...f, feature_image: image, cover }));
+                setDirty(true);
+              }}
+            />
           </Panel>
 
           <Panel title="Details">

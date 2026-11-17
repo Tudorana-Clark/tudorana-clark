@@ -10,6 +10,8 @@ from ..models import (
     ContentIn,
     ContentList,
     ContentSummary,
+    CoverRequest,
+    CoverResult,
     Kind,
     MediaOut,
     SeoRequest,
@@ -60,6 +62,11 @@ async def delete(content_id: str, c: ContainerDep) -> None:
 @router.post("/ai/seo", response_model=SeoSuggestion)
 async def ai_seo(body: SeoRequest, c: ContainerDep) -> SeoSuggestion:
     return await c.ai.generate(body)
+
+
+@router.post("/ai/covers", response_model=CoverResult)
+async def ai_covers(body: CoverRequest, c: ContainerDep) -> CoverResult:
+    return await c.covers.generate(body)
 
 
 @router.post("/media", response_model=MediaOut, status_code=status.HTTP_201_CREATED)

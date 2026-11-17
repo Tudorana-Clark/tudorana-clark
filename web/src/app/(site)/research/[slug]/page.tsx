@@ -110,7 +110,7 @@ export default async function ResearchPaper({ params }: Props) {
                     Download
                   </a>
                 </div>
-                <Media image={c.feature_image} style={{ height: 360, borderRadius: 18 }} />
+                <Media image={c.feature_image} fallback={c.slug} tone="dark" style={{ height: 360, borderRadius: 18 }} />
               </div>
             )}
             {r?.carousel_url && (

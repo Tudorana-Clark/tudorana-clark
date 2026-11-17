@@ -68,6 +68,7 @@ if [[ $TARGET == all || $TARGET == api ]]; then
     "SITE_URL=$SITE_URL" "AZURE_CLIENT_ID=$CLIENT_ID"
     "COSMOS_ENDPOINT=$(out cosmosEndpoint)" "STORAGE_ACCOUNT=$(out storageAccount)" "MEDIA_BASE_URL=$(out mediaBaseUrl)"
     "OPENAI_ENDPOINT=$(out openAiEndpoint)" "OPENAI_DEPLOYMENT=$(out openAiDeployment)"
+    "IMAGE_ENDPOINT=$(out imageEndpoint)" "IMAGE_DEPLOYMENT=$(out imageDeployment)"
     "NOTIFY_EMAIL=${NOTIFY_EMAIL:-daniel@tudoranaclark.com}")
   if [[ $MODE == full ]]; then
     args+=(ADMIN_API_KEY=secretref:admin-api-key INDEXNOW_KEY=secretref:indexnow-key RESEND_API_KEY=secretref:resend-api-key)
