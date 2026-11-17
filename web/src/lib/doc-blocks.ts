@@ -15,7 +15,7 @@
  * studio can never take a page down.
  */
 
-export const BLOCK_NAMES = ["stats", "bars", "callout", "cards", "steps", "glossary", "sources"] as const;
+export const BLOCK_NAMES = ["stats", "bars", "callout", "cards", "steps", "glossary", "sources", "instrument"] as const;
 export type BlockName = (typeof BLOCK_NAMES)[number];
 
 export interface Stat {
@@ -56,7 +56,8 @@ export type Block =
   | { type: "cards"; title: string; items: Card[] }
   | { type: "steps"; title: string; items: Step[] }
   | { type: "glossary"; title: string; items: Term[] }
-  | { type: "sources"; title: string; items: Source[] };
+  | { type: "sources"; title: string; items: Source[] }
+  | { type: "instrument"; title: string; intro: string };
 
 export type Segment = { type: "markdown"; markdown: string } | { type: "block"; block: Block };
 
@@ -161,6 +162,10 @@ export function parseBlock(name: BlockName, source: string): Block {
           return { ...splitAuthors(r[0]), title: r[1], venue: r[2] ?? "", url: safeUrl(r[3]), note: r[4] ?? "" };
         }),
       };
+    case "instrument":
+      // The interactive Calibrated Reliance Instrument; any text lines become its introduction.
+      if (!title) throw new BlockError("instrument: add an @title line");
+      return { type: "instrument", title, intro: text.join(" ").replace(/\s+/g, " ").trim() };
   }
 }
 

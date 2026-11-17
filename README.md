@@ -117,6 +117,9 @@ A research paper with three or more `##` headings becomes a long read with an "O
 | `steps` | `title \| body` | `@title` |
 | `glossary` | `term \| definition` (also published as schema.org `DefinedTermSet`) | `@title` |
 | `sources` | `Authors (Year) \| Title \| Venue \| URL \| what it informed` (also published as the paper's `citation`) | `@title` |
+| `instrument` | free text, used as the introduction | `@title` (required) |
+
+`instrument` is the interactive Calibrated Reliance Instrument. It runs the paper's version 1.0 rules (`web/src/lib/cri.ts`) in the browser, and a result can be shared with `?cri=`. `npm test` in `web/` checks those rules against the paper's published figures: all 512 descriptors, the 9/93/210/162/38 level distribution, monotonicity and band edges. CI runs the same tests.
 
 The code is in `web/src/lib/doc-blocks.ts` (parsing) and `web/src/components/doc/` (rendering).
 

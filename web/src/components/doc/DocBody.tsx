@@ -1,9 +1,11 @@
 import "server-only";
 
-import type { ReactNode } from "react";
+import { Suspense, type ReactNode } from "react";
 
 import type { Bar, Block, Segment } from "@/lib/doc-blocks";
 import { renderMarkdown, type Heading } from "@/lib/markdown";
+
+import { Instrument, InstrumentSkeleton } from "./Instrument";
 
 type Shared = { used: Map<string, number>; headings: Heading[] };
 
@@ -93,6 +95,12 @@ function DocBlock({ block, shared }: { block: Block; shared: Shared }) {
             ))}
           </dl>
         </section>
+      );
+    case "instrument":
+      return (
+        <Suspense fallback={<InstrumentSkeleton title={block.title} />}>
+          <Instrument title={block.title} intro={block.intro} />
+        </Suspense>
       );
     case "sources":
       return (
