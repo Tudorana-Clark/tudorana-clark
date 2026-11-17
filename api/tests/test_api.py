@@ -207,6 +207,7 @@ def test_ai_covers_unconfigured_with_real_storage(monkeypatch: pytest.MonkeyPatc
 
     monkeypatch.setattr(main, "CosmosRepository", lambda *a: main.MemoryRepository())
     monkeypatch.setattr(main, "BlobMediaStore", lambda *a: main.MemoryMediaStore())
+    monkeypatch.setattr(main, "CosmosStudioStore", lambda *a: main.MemoryStudioStore())
     settings = Settings(environment="test", storage_backend="cosmos", admin_api_key=SecretStr(KEY), openai_endpoint="", image_endpoint="", resend_api_key=SecretStr(""))
     with TestClient(create_app(settings)) as c:
         res = c.post("/v1/admin/ai/covers", json={"kind": "article", "title": "Hello"}, headers=ADMIN)
