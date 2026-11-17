@@ -44,3 +44,35 @@ export function displayDate(item: { kind: Kind; published_at: string | null; upd
   if ((item.kind === "talk" || item.kind === "video") && item.event?.date) return item.event.date;
   return item.published_at ?? item.updated_at;
 }
+
+/**
+ * Opening paragraphs of a Markdown body as plain text, cut at a sentence boundary.
+ * Uses the author's own words (not the AI summary) for previews.
+ */
+export function leadText(markdown: string, maxChars = 560): string {
+  const paragraphs = markdown
+    .split(/\n{2,}/)
+    .map((p) => p.trim())
+    .filter((p) => p && !/^(#|[-*+] |\d+\. |>|\||!\[|```)/.test(p))
+    .map((p) =>
+      p
+        .replace(/\[([^\]]+)\]\([^)]+\)/g, "$1")
+        .replace(/[*_`~]+/g, "")
+        .replace(/\s+/g, " "),
+    );
+  let out = "";
+  for (const p of paragraphs) {
+    const next = out ? `${out} ${p}` : p;
+    if (next.length <= maxChars) {
+      out = next;
+      continue;
+    }
+    if (!out) {
+      const cut = p.slice(0, maxChars);
+      const end = Math.max(cut.lastIndexOf(". "), cut.lastIndexOf("? "), cut.lastIndexOf("! "));
+      out = end > 80 ? cut.slice(0, end + 1) : `${cut.slice(0, cut.lastIndexOf(" "))}…`;
+    }
+    break;
+  }
+  return out;
+}

@@ -20,6 +20,10 @@ param openAiModelVersion string = '2025-04-14'
 @description('Thousands of tokens per minute. Pay-per-token; capacity only caps throughput, it does not cost anything idle.')
 param openAiCapacity int = 30
 
+@description('GitHub repository (owner/name) allowed to deploy via OIDC, and the GitHub environment it must run in.')
+param githubRepo string = 'Tudorana-Clark/tudorana-clark'
+param githubEnvironment string = 'production'
+
 @description('Cosmos DB free tier: only one account per subscription may use it.')
 param cosmosFreeTier bool = true
 
@@ -223,6 +227,34 @@ resource cosmosRoles 'Microsoft.DocumentDB/databaseAccounts/sqlRoleAssignments@2
   }
 }]
 
+// ---------- GitHub Actions deploy identity (keyless OIDC; no secrets stored in GitHub) ----------
+resource deployIdentity 'Microsoft.ManagedIdentity/userAssignedIdentities@2023-01-31' = {
+  name: 'id-${appName}-deploy'
+  location: location
+  tags: tags
+}
+
+resource deployFederation 'Microsoft.ManagedIdentity/userAssignedIdentities/federatedIdentityCredentials@2023-01-31' = {
+  parent: deployIdentity
+  name: 'github-${githubEnvironment}'
+  properties: {
+    issuer: 'https://token.actions.githubusercontent.com'
+    subject: 'repo:${githubRepo}:environment:${githubEnvironment}'
+    audiences: [ 'api://AzureADTokenExchange' ]
+  }
+}
+
+// Contributor on this resource group only: build images, update the apps. Cannot grant roles.
+resource deployContributor 'Microsoft.Authorization/roleAssignments@2022-04-01' = {
+  name: guid(resourceGroup().id, deployIdentity.id, 'contributor')
+  properties: {
+    roleDefinitionId: subscriptionResourceId('Microsoft.Authorization/roleDefinitions', 'b24988ac-6180-42a0-ab88-20f7382dd24c')
+    principalId: deployIdentity.properties.principalId
+    principalType: 'ServicePrincipal'
+  }
+}
+
+output deployClientId string = deployIdentity.properties.clientId
 output acrName string = acr.name
 output acrLoginServer string = acr.properties.loginServer
 output envName string = env.name

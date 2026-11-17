@@ -7,10 +7,12 @@ import { deleteContentAction, generateSeoAction, saveContentAction, setStatusAct
 import { KIND_LABEL, pathFor } from "@/lib/content";
 import { type Content, type ContentInput, KINDS, type SocialCopy } from "@/lib/types";
 
+import { DatePicker } from "./DatePicker";
 import { LinesField, Panel, TextField } from "./fields";
 import { MarkdownEditor } from "./MarkdownEditor";
 import { SerpPreview, SocialCardPreview } from "./Previews";
 import { StatusBadge } from "./StatusBadge";
+import { TagInput, type TagSuggestions } from "./TagInput";
 import { useUpload } from "./useUpload";
 
 type Toast = { tone: "success" | "error"; text: string } | null;
@@ -28,7 +30,7 @@ const SOCIAL: { key: keyof SocialCopy; label: string; max: number; share?: (text
   { key: "bluesky", label: "Bluesky", max: 300, share: (t, u) => `https://bsky.app/intent/compose?text=${encodeURIComponent(`${t} ${u}`)}` },
 ];
 
-export function Editor({ initial, siteUrl }: { initial: Content | ContentInput; siteUrl: string }) {
+export function Editor({ initial, siteUrl, tagSuggestions }: { initial: Content | ContentInput; siteUrl: string; tagSuggestions: TagSuggestions }) {
   const router = useRouter();
   const saved = "id" in initial ? initial : null;
   const [doc, setDoc] = useState<Content | null>(saved);
@@ -315,10 +317,10 @@ export function Editor({ initial, siteUrl }: { initial: Content | ContentInput; 
           <Panel title="Details">
             <TextField label="Web address" value={form.slug ?? ""} onChange={(v) => update("slug", v.toLowerCase().replace(/[^a-z0-9-]/g, "-").replace(/-+/g, "-"))} placeholder="generated-from-title" hint={livePath} invalid={errorField === "slug"} />
             <TextField label="Category" value={form.category} onChange={(v) => update("category", v)} placeholder="Artificial Intelligence" />
-            <TextField label="Tags" value={form.tags.join(", ")} onChange={(v) => update("tags", v.split(",").map((t) => t.trim()).filter(Boolean))} hint="Comma separated" />
+            <TagInput value={form.tags} onChange={(v) => update("tags", v)} suggestions={tagSuggestions} />
             <TextField label="Excerpt (listing cards)" multiline rows={3} value={form.excerpt} onChange={(v) => update("excerpt", v)} max={400} />
-            <label style={{ display: "flex", alignItems: "center", gap: 10, fontSize: 14, minHeight: 44, cursor: "pointer" }}>
-              <input type="checkbox" checked={form.featured} onChange={(e) => update("featured", e.target.checked)} style={{ width: 20, height: 20 }} />
+            <label className="check-label">
+              <input type="checkbox" className="checkbox" checked={form.featured} onChange={(e) => update("featured", e.target.checked)} />
               Feature this piece
             </label>
           </Panel>
@@ -326,7 +328,7 @@ export function Editor({ initial, siteUrl }: { initial: Content | ContentInput; 
           {(form.kind === "talk" || form.kind === "video") && (
             <Panel title="Event">
               <TextField label="Event name" value={form.event?.name ?? ""} onChange={(v) => update("event", { ...(form.event ?? { date: "", location: "", url: null }), name: v })} invalid={errorField?.startsWith("event")} />
-              <TextField label="Date" type="date" value={(form.event?.date ?? "").slice(0, 10)} onChange={(v) => update("event", { ...(form.event ?? { name: "", location: "", url: null }), date: v })} />
+              <DatePicker label="Date" value={(form.event?.date ?? "").slice(0, 10)} onChange={(v) => update("event", { ...(form.event ?? { name: "", location: "", url: null }), date: v })} invalid={errorField === "event.date"} />
               <TextField label="Location" value={form.event?.location ?? ""} onChange={(v) => update("event", { ...(form.event ?? { name: "", date: "", url: null }), location: v })} />
               <TextField label="Event website" type="url" value={form.event?.url ?? ""} onChange={(v) => update("event", { ...(form.event ?? { name: "", date: "", location: "" }), url: v || null })} />
             </Panel>

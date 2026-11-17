@@ -39,7 +39,6 @@ export function contentMetadata(c: Content): Metadata {
       // LinkedIn and Slack read these; AI crawlers use them to date and attribute claims.
       author: site.author,
       "article:author": site.author,
-      ...(c.reading_minutes ? { "twitter:label1": "Reading time", "twitter:data1": `${c.reading_minutes} min` } : {}),
     },
   };
 }

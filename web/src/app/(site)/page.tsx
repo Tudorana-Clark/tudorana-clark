@@ -3,9 +3,9 @@ import { connection } from "next/server";
 
 import { LatestRow, TalkRow, VideoCard } from "@/components/ContentRows";
 import { Partners } from "@/components/Partners";
-import { Media, Notice, SectionIntro } from "@/components/ui";
+import { ArrowIcon, Media, Notice, SectionIntro } from "@/components/ui";
 import { getPublished, listPublishedSafe } from "@/lib/api";
-import { formatShort, pathFor } from "@/lib/content";
+import { formatShort, leadText, pathFor } from "@/lib/content";
 import { site } from "@/lib/site";
 
 const CAREER = [
@@ -30,33 +30,20 @@ export default async function HomePage() {
     listPublishedSafe("video", 3),
   ]);
   const latest = articles.items[0];
+  const latestFull = latest ? await getPublished(latest.slug).catch(() => null) : null;
+  const latestLead = (latestFull && leadText(latestFull.body)) || latest?.excerpt || "";
   const paper = research.items[0];
   const anyFailed = [articles, research, talks, videos].some((r) => r.failed);
 
   return (
     <>
       <section className="wrap" style={{ paddingTop: 96, textAlign: "center", display: "flex", flexDirection: "column", alignItems: "center", gap: 28 }}>
-        <Link href="/about" style={{ display: "inline-flex", alignItems: "center", gap: 10, minHeight: 36, padding: "0 16px 0 6px", borderRadius: 999, background: "var(--card)", fontSize: 13, color: "var(--ink)" }}>
-          <span className="avatar" style={{ width: 26, height: 26 }} aria-hidden="true">
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            {site.images.portrait && <img src={site.images.portrait} alt="" />}
-          </span>
-          {site.author} · {site.jobTitle}, {site.employer}
-        </Link>
         <h1 className="display h-hero" style={{ fontSize: 76, lineHeight: 1.0, maxWidth: 980 }}>
           Insights on AI, technology, business and the economy.
         </h1>
         <p style={{ margin: 0, fontSize: 19, lineHeight: 1.55, color: "var(--muted)", maxWidth: 640 }}>
           I help businesses put AI to practical use, and write about how technology drives social and economic growth when it is deployed well.
         </p>
-        <div style={{ display: "flex", gap: 10, flexWrap: "wrap", justifyContent: "center" }}>
-          <Link className="pill" href="/writing">
-            Read the latest
-          </Link>
-          <Link className="pill ghost" href="/about">
-            About Daniel
-          </Link>
-        </div>
       </section>
 
       {anyFailed && (
@@ -69,14 +56,17 @@ export default async function HomePage() {
         <div className="g2">
           <Link href={latest ? pathFor(latest) : "/writing"} className="card-xl" style={{ display: "flex", flexDirection: "column", gap: 28, color: "var(--ink)", minHeight: 560 }}>
             <CardHead title="Writing" subtitle="Articles, research and notes" />
-            <div style={{ marginTop: "auto", background: "var(--white)", borderRadius: 20, padding: 28, display: "flex", flexDirection: "column", gap: 12, boxShadow: "0 1px 2px rgba(14,21,32,0.06)" }}>
+            <div style={{ flex: 1, minHeight: 380, background: "var(--white)", borderRadius: 20, padding: 32, display: "flex", flexDirection: "column", gap: 12, boxShadow: "0 1px 2px rgba(14,21,32,0.06)" }}>
               {latest ? (
                 <>
                   <span className="kicker">Latest · {formatShort(latest.published_at)}</span>
-                  <span className="display" style={{ fontSize: 30, lineHeight: 1.1 }}>
+                  <span className="display" style={{ fontSize: 36, lineHeight: 1.08 }}>
                     {latest.title}
                   </span>
-                  <span style={{ fontSize: 15, lineHeight: 1.55, color: "var(--muted)" }}>{latest.excerpt}</span>
+                  <span style={{ fontSize: 16, lineHeight: 1.65, color: "var(--muted)", marginTop: 4 }}>{latestLead}</span>
+                  <span style={{ marginTop: "auto", paddingTop: 12, fontSize: 14, fontWeight: 500, display: "inline-flex", alignItems: "center", gap: 8 }}>
+                    Read the article <ArrowIcon />
+                  </span>
                 </>
               ) : (
                 <span style={{ fontSize: 15, color: "var(--muted)" }}>New writing is on its way.</span>
@@ -85,7 +75,7 @@ export default async function HomePage() {
           </Link>
           <Link href="/about" className="card-xl" style={{ display: "flex", flexDirection: "column", gap: 28, color: "var(--ink)", minHeight: 560 }}>
             <CardHead title={site.author} subtitle="Founder-led, practitioner first" />
-            <Media image={site.images.portrait ? { url: site.images.portrait, alt: `Portrait of ${site.author}` } : null} tone="warm" style={{ marginTop: "auto", flex: 1, minHeight: 380 }} sizes="(max-width: 860px) 100vw, 600px" />
+            <Media image={site.images.portrait ? { url: site.images.portrait, alt: `Portrait of ${site.author}` } : null} tone="warm" focus="50% 28%" style={{ marginTop: "auto", flex: 1, minHeight: 380 }} sizes="(max-width: 860px) 100vw, 600px" />
           </Link>
         </div>
       </section>
@@ -105,22 +95,17 @@ export default async function HomePage() {
       </section>
 
       <section className="wrap section" style={{ display: "flex", flexDirection: "column", gap: 32 }}>
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-end", gap: 16, flexWrap: "wrap" }}>
-          <h2 className="display h-1" style={{ fontSize: 48, lineHeight: 1.04 }}>
-            My core philosophy
-          </h2>
-          <span style={{ fontSize: 15, color: "var(--muted)", maxWidth: 380 }}>Three arguments I keep making to the businesses I work with.</span>
-        </div>
+        <h2 className="display h-1" style={{ fontSize: 48, lineHeight: 1.04 }}>
+          My core philosophy
+        </h2>
         <div className="g3">
           {PHILOSOPHY.map((p) => (
-            <div key={p.n} className="card" style={{ display: "flex", flexDirection: "column", gap: 40, minHeight: 280 }}>
+            <div key={p.n} className="card" style={{ display: "flex", flexDirection: "column", gap: 12 }}>
               <span style={{ fontSize: 13, color: "var(--brass)", fontWeight: 600 }}>{p.n}</span>
-              <div style={{ display: "flex", flexDirection: "column", gap: 12, marginTop: "auto" }}>
-                <h3 className="display" style={{ fontSize: 26, lineHeight: 1.15 }}>
-                  {p.title}
-                </h3>
-                <p style={{ margin: 0, fontSize: 15, lineHeight: 1.55, color: "var(--muted)" }}>{p.text}</p>
-              </div>
+              <h3 className="display" style={{ fontSize: 22, lineHeight: 1.25 }}>
+                {p.title}
+              </h3>
+              <p style={{ margin: 0, fontSize: 15, lineHeight: 1.55, color: "var(--muted)" }}>{p.text}</p>
             </div>
           ))}
         </div>
@@ -158,7 +143,7 @@ export default async function HomePage() {
                 Read the paper
               </span>
             </div>
-            <ResearchStats slug={paper.slug} />
+            <ResearchArguments slug={paper.slug} />
           </Link>
         </section>
       )}
@@ -216,20 +201,18 @@ function CardHead({ title, subtitle }: { title: string; subtitle: string }) {
   );
 }
 
-async function ResearchStats({ slug }: { slug: string }) {
+/** The paper's key arguments as bubbles (from its takeaways), in place of test statistics. */
+async function ResearchArguments({ slug }: { slug: string }) {
   const full = await getPublished(slug).catch(() => null);
-  const stats = full?.research?.stats.slice(0, 4) ?? [];
-  if (!stats.length) return <div />;
+  const points = full?.seo.key_takeaways.filter(Boolean).slice(0, 3) ?? [];
+  if (!points.length) return <div />;
   return (
-    <div style={{ display: "grid", gridTemplateColumns: "repeat(2, minmax(0,1fr))", gap: 12, alignContent: "end" }}>
-      {stats.map((s, i) => (
-        <div key={s.label} className="stat-dark">
-          <div className="display" style={{ fontSize: 40, color: i === 3 ? "var(--gold)" : "var(--white)" }}>
-            {s.value}
-          </div>
-          <div style={{ fontSize: 13, color: "var(--on-dark)", marginTop: 6 }}>{s.label}</div>
-        </div>
+    <ul style={{ listStyle: "none", margin: 0, padding: 0, display: "flex", flexDirection: "column", gap: 12, justifyContent: "flex-end" }} aria-label="Key arguments">
+      {points.map((point) => (
+        <li key={point} className="stat-dark" style={{ fontSize: 15, lineHeight: 1.5, color: "var(--on-dark-3)" }}>
+          {point}
+        </li>
       ))}
-    </div>
+    </ul>
   );
 }

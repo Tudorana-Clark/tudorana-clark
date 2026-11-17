@@ -38,7 +38,6 @@ export default async function ResearchPaper({ params }: Props) {
   const c = await load((await params).slug);
   const r = c.research;
   const { html } = renderMarkdown(c.body);
-  const stats = r?.stats ?? [];
 
   return (
     <article>
@@ -76,24 +75,6 @@ export default async function ResearchPaper({ params }: Props) {
           <div className="prose plain" style={{ margin: 0, padding: 0, maxWidth: "none", fontSize: 17 }} dangerouslySetInnerHTML={{ __html: html }} />
         </div>
       </section>
-
-      {stats.length > 0 && (
-        <section className="wrap" style={{ marginTop: 96, display: "flex", flexDirection: "column", gap: 24 }}>
-          <h2 className="display" style={{ fontSize: 36 }}>
-            Key findings
-          </h2>
-          <div className="g4">
-            {stats.map((s) => (
-              <div key={s.label} style={{ background: "var(--card)", borderRadius: 22, padding: 26, display: "flex", flexDirection: "column", gap: 8 }}>
-                <span className="display" style={{ fontSize: 38 }}>
-                  {s.value}
-                </span>
-                <span style={{ fontSize: 14, lineHeight: 1.5, color: "var(--muted)" }}>{s.label}</span>
-              </div>
-            ))}
-          </div>
-        </section>
-      )}
 
       {c.seo.key_takeaways.length > 0 && (
         <section className="wrap" style={{ marginTop: 96 }}>

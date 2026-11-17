@@ -19,7 +19,7 @@ export async function ContentArticle({ content: c }: { content: Content }) {
   const related = (await connectionSafeList(c)).slice(0, 2);
   const url = absoluteUrl(pathFor(c));
   const kicker = c.kind === "talk" ? c.event?.name || "Talk" : c.category || KIND_LABEL[c.kind];
-  const byline = [site.author, formatLong(c.kind === "talk" && c.event ? c.event.date : c.published_at), c.kind !== "video" ? `${c.reading_minutes} min read` : null].filter(Boolean).join(" · ");
+  const byline = [site.author, formatLong(c.kind === "talk" && c.event ? c.event.date : c.published_at)].filter(Boolean).join(" · ");
 
   return (
     <article>
@@ -144,7 +144,7 @@ export async function ContentArticle({ content: c }: { content: Content }) {
               ) : (
                 <Link key={r.id} href={pathFor(r)} className="card" style={{ display: "flex", flexDirection: "column", gap: 10, color: "var(--ink)", minHeight: 220 }}>
                   <span style={{ fontSize: 13, color: "var(--muted)" }}>
-                    {formatLong(r.published_at)} · {r.reading_minutes} min read
+                    {formatLong(r.published_at)}
                   </span>
                   <span className="display" style={{ fontSize: 26, lineHeight: 1.2, marginTop: "auto" }}>
                     {r.title}

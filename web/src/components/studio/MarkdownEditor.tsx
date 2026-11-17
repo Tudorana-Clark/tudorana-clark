@@ -112,7 +112,7 @@ export function MarkdownEditor({ value, onChange }: { value: string; onChange: (
           {error ?? (busy ? "Uploading…" : "")}
         </span>
         <span>
-          {words.toLocaleString("en-GB")} words · {Math.max(1, Math.ceil(words / 230))} min read
+          {words.toLocaleString("en-GB")} words
         </span>
       </div>
     </div>

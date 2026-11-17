@@ -60,7 +60,7 @@ export async function renderCard({ kicker, title, meta, image, dark }: Card): Pr
 export async function renderContentCard(slug: string): Promise<ImageResponse> {
   const c = await getPublished(slug).catch(() => null);
   if (!c) return renderCard({ kicker: site.name, title: "Insights on AI, technology, business and the economy.", meta: site.author });
-  const meta = [site.author, formatLong(c.published_at), c.kind === "article" ? `${c.reading_minutes} min read` : null].filter(Boolean).join("  ·  ");
+  const meta = [site.author, formatLong(c.published_at)].filter(Boolean).join("  ·  ");
   const image = c.feature_image?.url && /\.(png|jpe?g)$/i.test(c.feature_image.url) ? c.feature_image.url : null; // satori decodes PNG/JPEG only
   return renderCard({ kicker: c.kind === "talk" ? c.event?.name || "Talk" : c.category || KIND_LABEL[c.kind], title: c.title, meta, image, dark: c.kind === "research" });
 }

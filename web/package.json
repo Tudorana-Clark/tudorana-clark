@@ -10,6 +10,7 @@
   },
   "dependencies": {
     "dompurify": "^3.4.18",
+    "jose": "^6.2.17",
     "marked": "^18.2.1",
     "next": "16.4.6",
     "react": "19.3.0",

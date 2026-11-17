@@ -36,7 +36,7 @@ export function ContactForm() {
       </label>
       <label className="field" style={{ gridColumn: "1 / -1" }}>
         Topic
-        <select className="input" name="topic" required defaultValue="" aria-invalid={invalid("topic")} disabled={pending}>
+        <select className="input select-brand" name="topic" required defaultValue="" aria-invalid={invalid("topic")} disabled={pending}>
           <option value="" disabled>
             Please select
           </option>

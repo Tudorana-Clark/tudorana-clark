@@ -1,0 +1,123 @@
+name: Test and deploy
+
+# Every push to main is tested, then only the changed app (api, web or both) ships to Azure.
+# Azure sign-in is keyless (OIDC → managed identity). No app secrets are stored in GitHub:
+# the Container Apps keep the secrets they already hold (see infra/deploy.sh "code-only" mode).
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+    inputs:
+      target:
+        description: What to deploy
+        type: choice
+        options: [all, web, api]
+        default: all
+
+concurrency:
+  group: deploy-${{ github.ref }}
+  cancel-in-progress: false # never interrupt a deploy halfway
+
+permissions:
+  contents: read
+
+jobs:
+  changes:
+    runs-on: ubuntu-latest
+    outputs:
+      api: ${{ steps.diff.outputs.api }}
+      web: ${{ steps.diff.outputs.web }}
+    steps:
+      - uses: actions/checkout@v7.0.1
+        with:
+          fetch-depth: 0
+      - id: diff
+        name: Detect changed apps
+        run: |
+          if [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
+            t="${{ inputs.target }}"
+            echo "api=$([[ $t == all || $t == api ]] && echo true || echo false)" >> "$GITHUB_OUTPUT"
+            echo "web=$([[ $t == all || $t == web ]] && echo true || echo false)" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          base="${{ github.event.pull_request.base.sha || github.event.before }}"
+          if [[ -z "$base" || "$base" =~ ^0+$ ]] || ! git cat-file -e "$base" 2>/dev/null; then
+            files=$(git ls-files)              # first push: treat everything as changed
+          else
+            files=$(git diff --name-only "$base" HEAD)
+          fi
+          echo "$files" | grep -qE '^(api/|infra/deploy.sh)' && api=true || api=false
+          echo "$files" | grep -qE '^(web/|infra/deploy.sh|infra/site.env)' && web=true || web=false
+          echo "api=$api" >> "$GITHUB_OUTPUT"; echo "web=$web" >> "$GITHUB_OUTPUT"
+          echo "api changed: $api · web changed: $web"
+
+  test-api:
+    needs: changes
+    if: needs.changes.outputs.api == 'true'
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: api
+    steps:
+      - uses: actions/checkout@v7.0.1
+      - uses: astral-sh/setup-uv@v10.3.3
+      - run: uv sync --frozen
+      - run: uv run ruff check app
+      - run: uv run mypy app
+      - run: uv run pytest -q
+
+  test-web:
+    needs: changes
+    if: needs.changes.outputs.web == 'true'
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: web
+    steps:
+      - uses: actions/checkout@v7.0.1
+      - uses: actions/setup-node@v7.1.0
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+      - run: npm ci --no-audit --no-fund
+      - run: npx tsc --noEmit
+      - run: npx eslint src
+      - run: npm run build
+        env:
+          NEXT_TELEMETRY_DISABLED: "1"
+
+  deploy:
+    needs: [changes, test-api, test-web]
+    # Run when tests passed or were skipped (unchanged app), never on pull requests.
+    if: >-
+      github.event_name != 'pull_request' && !cancelled() && !failure() &&
+      (needs.changes.outputs.api == 'true' || needs.changes.outputs.web == 'true')
+    runs-on: ubuntu-latest
+    environment: production
+    permissions:
+      contents: read
+      id-token: write # OIDC token for Azure sign-in
+    steps:
+      - uses: actions/checkout@v7.0.1
+      - uses: azure/login@v3.1.0
+        with:
+          client-id: ${{ vars.AZURE_CLIENT_ID }}
+          tenant-id: ${{ vars.AZURE_TENANT_ID }}
+          subscription-id: ${{ vars.AZURE_SUBSCRIPTION_ID }}
+      - name: Deploy API
+        if: needs.changes.outputs.api == 'true'
+        run: infra/deploy.sh api
+        env:
+          IMAGE_TAG: ${{ github.sha }}
+      - name: Deploy web
+        if: needs.changes.outputs.web == 'true'
+        run: infra/deploy.sh web
+        env:
+          IMAGE_TAG: ${{ github.sha }}
+      - name: Summary
+        if: always()
+        run: echo "Deployed commit ${GITHUB_SHA::7} · api=${{ needs.changes.outputs.api }} web=${{ needs.changes.outputs.web }}" >> "$GITHUB_STEP_SUMMARY"

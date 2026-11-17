@@ -62,6 +62,14 @@ Tests: `cd api && uv run pytest` · Type and lint checks: `cd web && npx tsc --n
 
 ## Deploy
 
+**Automatic (GitHub Actions):** every push to `main` runs [.github/workflows/deploy.yml](.github/workflows/deploy.yml). It detects whether `api/`, `web/` or both changed, runs that app's checks (ruff, mypy and pytest; tsc, eslint and `next build`), then deploys only what changed.
+- Pull requests run the checks but never deploy.
+- You can deploy by hand from **Actions → Test and deploy → Run workflow**.
+- GitHub signs in to Azure with OIDC as the managed identity `id-tudoranaclark-deploy`, which has Contributor on `rg-tudoranaclark` only and trusts only this repo's `production` environment on `main`. There are no Azure keys or app secrets in GitHub; the Container Apps keep their own secrets.
+- Repo variables: `AZURE_CLIENT_ID`, `AZURE_TENANT_ID`, `AZURE_SUBSCRIPTION_ID`.
+
+**From your machine:** needed for first-time setup and whenever secrets change, such as a rotated password or a renewed Entra client secret. It runs in "full" mode because `.secrets/app-secrets.json` exists:
+
 ```bash
 az deployment group create -g rg-tudoranaclark -n platform -f infra/main.bicep -p developerPrincipalId=$(az ad signed-in-user show --query id -o tsv)
 infra/deploy.sh              # builds in ACR (no local Docker needed), creates/updates both apps
@@ -70,9 +78,21 @@ SITE_URL=https://tudoranaclark.com infra/deploy.sh   # after the custom domain i
 ```
 Secrets live in `.secrets/app-secrets.json` (git-ignored, chmod 600) and are stored as Container Apps secrets.
 
+## Studio sign-in (Microsoft SSO)
+
+`/studio` signs in with Microsoft Entra ID as **daniel@tudoranaclark.com**. Two locks keep anyone else out:
+1. The Entra app **Tudorana Clark Studio** (single tenant) has *assignment required* on and only Daniel assigned, so Microsoft refuses everyone else.
+2. The site checks Daniel's immutable Entra object ID (`STUDIO_ALLOWED_OIDS`) after verifying the token's signature, issuer, audience, nonce and tenant.
+
+It uses the authorisation code flow with PKCE, and sessions last 12 hours. Password sign-in only appears where SSO isn't configured.
+**Client secret expires 17 Nov 2028.** Before then, run `az ad app credential reset --id <ENTRA_CLIENT_ID> --display-name studio-web --years 2`, update `.secrets/app-secrets.json`, then run `infra/deploy.sh web`.
+When the custom domain is live, add `https://tudoranaclark.com/studio/auth/callback` to the app's redirect URIs.
+To give someone else access, assign them to the Entra app and add their object ID to `STUDIO_ALLOWED_OIDS`.
+
 ## Content model
 
 `article`, `note` → `/writing/<slug>` · `research` → `/research/<slug>` · `talk`, `video` → `/speaking/<slug>`.
+Edits made outside the studio (scripts, imports) show up within 5 minutes, or straight away after `curl -X POST -H "x-admin-key: $ADMIN_API_KEY" <site>/api/revalidate`.
 Cosmos container `content` is partitioned by `/kind` and has a unique `/slug`. `subscribers` and `messages` back the newsletter and contact forms; read them in **/studio/inbox**, with CSV export.
 
 ## Still to do

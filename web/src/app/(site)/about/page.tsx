@@ -42,7 +42,7 @@ export default function AboutPage() {
       />
       <section className="wrap" style={{ paddingTop: 88 }}>
         <div className="split" style={{ alignItems: "end" }}>
-          <Media image={site.images.portrait ? { url: site.images.portrait, alt: `Portrait of ${site.author}` } : null} tone="warm" priority style={{ aspectRatio: "4 / 5", borderRadius: 28 }} sizes="(max-width: 860px) 100vw, 500px" />
+          <Media image={site.images.portrait ? { url: site.images.portrait, alt: `Portrait of ${site.author}` } : null} tone="warm" focus="50% 28%" priority style={{ aspectRatio: "4 / 5", borderRadius: 28 }} sizes="(max-width: 860px) 100vw, 500px" />
           <div style={{ display: "flex", flexDirection: "column", gap: 24, paddingBottom: 8 }}>
             <span className="eyebrow">About</span>
             <h1 className="display h-hero" style={{ fontSize: 72, lineHeight: 0.98 }}>

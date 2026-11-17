@@ -28,14 +28,14 @@ export function PlayIcon() {
  * Media slot. Renders the image when one exists, otherwise the design's neutral tile
  * (decorative, hidden from assistive tech) so layouts never collapse.
  */
-export function Media({ image, style, tone = "light", priority = false, sizes = "100vw", children }: { image?: Img | null; style?: React.CSSProperties; tone?: "light" | "dark" | "warm"; priority?: boolean; sizes?: string; children?: ReactNode }) {
+export function Media({ image, style, tone = "light", priority = false, sizes = "100vw", focus = "50% 50%", children }: { image?: Img | null; style?: React.CSSProperties; tone?: "light" | "dark" | "warm"; priority?: boolean; sizes?: string; focus?: string; children?: ReactNode }) {
   const bg = tone === "dark" ? "var(--navy-2)" : tone === "warm" ? "var(--placeholder-2)" : "var(--placeholder)";
   return (
     <div className="placeholder" style={{ background: bg, ...style }} aria-hidden={image ? undefined : true}>
       {image && (
         // Plain <img>: media lives on Blob Storage with immutable caching; no optimiser container needed.
         // eslint-disable-next-line @next/next/no-img-element
-        <img src={image.url} alt={image.alt} loading={priority ? "eager" : "lazy"} fetchPriority={priority ? "high" : "auto"} decoding="async" sizes={sizes} width={image.width ?? undefined} height={image.height ?? undefined} />
+        <img src={image.url} alt={image.alt} loading={priority ? "eager" : "lazy"} fetchPriority={priority ? "high" : "auto"} decoding="async" sizes={sizes} width={image.width ?? undefined} height={image.height ?? undefined} style={{ objectPosition: focus }} />
       )}
       {children}
     </div>

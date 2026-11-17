@@ -68,7 +68,6 @@ export function contentGraph(c: Content, section: { name: string; path: string }
     about: c.seo.entities.map((e) => ({ "@type": "Thing", name: e })),
     isPartOf: { "@id": WEBSITE_ID },
     wordCount: c.word_count || undefined,
-    timeRequired: c.reading_minutes ? `PT${c.reading_minutes}M` : undefined,
   };
 
   const nodes: Json[] = [breadcrumbs([{ name: "Home", path: "/" }, section, { name: c.title, path: pathFor(c) }])];

@@ -35,7 +35,7 @@ export default async function SpeakingPage() {
       </section>
 
       <section className="wrap" style={{ marginTop: 64 }}>
-        <Media image={site.images.stage ? { url: site.images.stage, alt: `${site.author} speaking on stage` } : null} priority style={{ height: "min(560px, 60vw)", borderRadius: 28 }} />
+        <Media image={site.images.stage ? { url: site.images.stage, alt: `${site.author} speaking on stage at a technology conference` } : null} priority focus="50% 30%" style={{ height: "min(560px, 60vw)", borderRadius: 28 }} sizes="(max-width: 1240px) 100vw, 1176px" />
       </section>
 
       {(talks.failed || videos.failed) && (

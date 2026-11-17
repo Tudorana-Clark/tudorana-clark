@@ -6,7 +6,7 @@ import { redirect } from "next/navigation";
 import { z } from "zod";
 
 import { admin, ApiError, CONTENT_TAG } from "@/lib/api";
-import { env, studioConfigured } from "@/lib/env";
+import { env, passwordLoginEnabled } from "@/lib/env";
 import { createSessionToken, passwordMatches, SESSION_COOKIE, SESSION_TTL_SECONDS, verifySessionToken } from "@/lib/session";
 import type { ActionResult, Content, ContentInput, SeoSuggestion } from "@/lib/types";
 
@@ -26,7 +26,7 @@ function fail(err: unknown): { ok: false; error: string } {
 const failedLogins = new Map<string, { count: number; until: number }>();
 
 export async function loginAction(_prev: ActionResult | null, form: FormData): Promise<ActionResult> {
-  if (!studioConfigured()) return { ok: false, error: "The studio isn’t configured yet. Set ADMIN_PASSWORD, SESSION_SECRET and ADMIN_API_KEY." };
+  if (!passwordLoginEnabled()) return { ok: false, error: "Password sign-in is turned off. Use “Continue with Microsoft”." };
   const ip = (await headers()).get("x-forwarded-for")?.split(",")[0]?.trim() ?? "local";
   const lock = failedLogins.get(ip);
   if (lock && lock.until > Date.now()) return { ok: false, error: "Too many attempts. Wait a few minutes and try again." };

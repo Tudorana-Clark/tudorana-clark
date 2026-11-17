@@ -355,6 +355,8 @@ a.dark-panel:hover {
   position: relative;
 }
 .placeholder > img {
+  position: absolute;
+  inset: 0;
   width: 100%;
   height: 100%;
   object-fit: cover;
@@ -800,4 +802,358 @@ textarea.input {
   #newsletter {
     display: none !important;
   }
+}
+
+/* ---------- Branded select ----------
+   Everywhere: custom chevron on the closed control (no OS arrow).
+   Where supported (Chromium 135+, Safari 27+): `appearance: base-select` also brands the
+   opened list while the browser keeps keyboard, focus and screen-reader behaviour.
+   Elsewhere (Firefox) the list falls back to the native picker. */
+select.select-brand {
+  appearance: none;
+  cursor: pointer;
+  padding-right: 48px;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1.5l5 5 5-5' fill='none' stroke='%230E1520' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 18px center;
+}
+select.select-brand:has(option[value=""]:checked) {
+  color: var(--muted);
+}
+
+@supports (appearance: base-select) {
+  select.select-brand,
+  select.select-brand::picker(select) {
+    appearance: base-select;
+  }
+  select.select-brand {
+    background-image: none;
+    padding-right: 16px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+  select.select-brand::picker-icon {
+    content: "";
+    width: 12px;
+    height: 8px;
+    background: currentColor;
+    color: var(--ink);
+    mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1.5l5 5 5-5' fill='none' stroke='black' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E") no-repeat center / contain;
+    transition: rotate 160ms var(--ease);
+  }
+  select.select-brand:open::picker-icon {
+    rotate: 180deg;
+  }
+  select.select-brand::picker(select) {
+    margin-top: 8px;
+    border: 1px solid var(--line);
+    border-radius: var(--r-sm);
+    background: var(--white);
+    padding: 6px;
+    box-shadow: 0 12px 32px rgba(14, 21, 32, 0.12);
+    font-family: var(--font-body);
+    opacity: 0;
+    translate: 0 -4px;
+    transition:
+      opacity 160ms var(--ease),
+      translate 160ms var(--ease),
+      overlay 160ms allow-discrete,
+      display 160ms allow-discrete;
+  }
+  select.select-brand:open::picker(select) {
+    opacity: 1;
+    translate: 0 0;
+  }
+  @starting-style {
+    select.select-brand:open::picker(select) {
+      opacity: 0;
+      translate: 0 -4px;
+    }
+  }
+  select.select-brand option {
+    min-height: 44px;
+    padding: 0 14px;
+    border-radius: 10px;
+    font-size: 15px;
+    color: var(--ink);
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  /* The "Please select" prompt shows in the closed control only, not in the list. */
+  select.select-brand option[value=""] {
+    display: none;
+  }
+  select.select-brand option:hover,
+  select.select-brand option:focus-visible {
+    background: var(--card);
+    outline: none;
+    box-shadow: none;
+  }
+  select.select-brand option:checked {
+    font-weight: 500;
+  }
+  select.select-brand option::checkmark {
+    order: 1;
+    margin-left: auto;
+    color: var(--brass);
+  }
+}
+
+/* ---------- Bespoke tick box (native checkbox, appearance: none) ---------- */
+:root {
+  --icon-check: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='3.5' stroke-linecap='round' stroke-linejoin='round'><polyline points='20 6 9 17 4 12'></polyline></svg>");
+}
+.check-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 12px;
+  min-height: 44px;
+  font-size: 14px;
+  color: var(--ink);
+  cursor: pointer;
+}
+.checkbox {
+  --checkbox-size: 1.375rem;
+  appearance: none;
+  display: inline-grid;
+  place-content: center;
+  flex: none;
+  inline-size: var(--checkbox-size);
+  aspect-ratio: 1;
+  margin: 0;
+  border: 1.5px solid #b8b8b0;
+  border-radius: 7px;
+  background: var(--white);
+  cursor: pointer;
+  transition:
+    background-color 160ms var(--ease),
+    border-color 160ms var(--ease);
+}
+.checkbox::before {
+  content: "";
+  inline-size: 0.8rem;
+  aspect-ratio: 1;
+  background-color: var(--white);
+  mask: var(--icon-check) no-repeat center / contain;
+  scale: 0;
+}
+@media (prefers-reduced-motion: no-preference) {
+  .checkbox::before {
+    transition: scale 150ms var(--ease);
+  }
+}
+.checkbox:hover {
+  border-color: var(--ink);
+}
+.checkbox:checked {
+  background: var(--ink);
+  border-color: var(--ink);
+}
+.checkbox:checked::before {
+  scale: 1;
+}
+.checkbox:focus-visible {
+  outline: 2px solid var(--ink);
+  outline-offset: 2px;
+  box-shadow: none;
+}
+.checkbox:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+@media (forced-colors: active) {
+  .checkbox::before {
+    background-color: CanvasText;
+  }
+}
+
+/* ---------- Bespoke date picker ---------- */
+.date-trigger {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  text-align: left;
+  cursor: pointer;
+  color: var(--ink);
+}
+.date-trigger[aria-expanded="true"] {
+  border-color: var(--ink);
+}
+.calendar {
+  position: absolute;
+  top: calc(100% + 8px);
+  left: 0;
+  z-index: 20;
+  width: min(320px, calc(100vw - 32px));
+  background: var(--white);
+  border: 1px solid var(--line);
+  border-radius: 18px;
+  box-shadow: 0 16px 40px rgba(14, 21, 32, 0.14);
+  padding: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  color: var(--ink);
+  animation: cal-in 160ms var(--ease);
+}
+@keyframes cal-in {
+  from {
+    opacity: 0;
+    translate: 0 -4px;
+  }
+}
+.cal-nav {
+  width: 40px;
+  height: 40px;
+  border-radius: 999px;
+  border: 0;
+  background: transparent;
+  color: var(--ink);
+  display: grid;
+  place-items: center;
+  cursor: pointer;
+}
+.cal-nav:hover {
+  background: var(--card);
+}
+.cal-row {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 2px;
+}
+.cal-weekday {
+  font-size: 12px;
+  color: var(--muted);
+  text-align: center;
+  padding: 4px 0;
+}
+.cal-day {
+  width: 100%;
+  aspect-ratio: 1;
+  min-height: 36px;
+  border: 0;
+  border-radius: 10px;
+  background: transparent;
+  color: var(--ink);
+  font-size: 14px;
+  font-variant-numeric: tabular-nums;
+  cursor: pointer;
+  transition: background-color 120ms var(--ease);
+}
+.cal-day:hover {
+  background: var(--card);
+}
+.cal-day[data-outside] {
+  color: #9a9ea5;
+}
+.cal-day[aria-current="date"] {
+  box-shadow: inset 0 0 0 1.5px var(--brass);
+  font-weight: 600;
+}
+.cal-day[aria-pressed="true"] {
+  background: var(--ink);
+  color: var(--white);
+  font-weight: 600;
+}
+.cal-day:focus-visible {
+  outline: 2px solid var(--ink);
+  outline-offset: 1px;
+  box-shadow: none;
+}
+
+/* ---------- Tag bubbles ---------- */
+.tag-box {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  min-height: 48px;
+  padding: 6px 8px;
+  border: 1px solid var(--line);
+  border-radius: var(--r-sm);
+  background: var(--white);
+  cursor: text;
+  transition: border-color 160ms var(--ease);
+}
+.tag-box:hover {
+  border-color: #c9c9c2;
+}
+.tag-box:focus-within {
+  border-color: var(--ink);
+  box-shadow: 0 0 0 3px rgba(14, 21, 32, 0.12);
+}
+.tag-box input {
+  flex: 1 1 120px;
+  min-width: 100px;
+  min-height: 34px;
+  border: 0;
+  outline: none;
+  background: transparent;
+  font-size: 15px;
+  color: var(--ink);
+}
+.tag-box input:focus-visible {
+  box-shadow: none;
+}
+.tag-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  min-height: 32px;
+  padding: 0 4px 0 12px;
+  border-radius: 999px;
+  background: var(--ink);
+  color: var(--white);
+  font-size: 13px;
+}
+.tag-remove {
+  display: grid;
+  place-items: center;
+  width: 26px;
+  height: 26px;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--white);
+  cursor: pointer;
+}
+.tag-remove:hover {
+  background: rgba(255, 255, 255, 0.16);
+}
+.tag-remove:focus-visible {
+  outline: 2px solid var(--white);
+  outline-offset: -2px;
+  box-shadow: none;
+}
+.tag-suggest {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 34px;
+  padding: 0 12px;
+  border: 1px dashed #c9c9c2;
+  border-radius: 999px;
+  background: var(--white);
+  color: var(--ink);
+  font-size: 13px;
+  cursor: pointer;
+  transition:
+    background-color 160ms var(--ease),
+    border-color 160ms var(--ease);
+}
+.tag-suggest:hover {
+  background: var(--card);
+  border-color: var(--ink);
+  border-style: solid;
+}
+.tag-suggest:active {
+  transform: scale(0.97);
+}
+.tag-count {
+  font-size: 11px;
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
 }

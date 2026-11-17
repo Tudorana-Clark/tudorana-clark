@@ -11,7 +11,7 @@ export function LatestRow({ item }: { item: ContentSummary }) {
     <Link href={pathFor(item)} className="list-link">
       <span style={{ display: "flex", flexDirection: "column", gap: 8 }}>
         <span style={{ fontSize: 13, color: "var(--muted)" }}>
-          {[item.category || KIND_LABEL[item.kind], formatShort(item.published_at), `${item.reading_minutes} min read`].filter(Boolean).join(" · ")}
+          {[item.category || KIND_LABEL[item.kind], formatShort(item.published_at)].filter(Boolean).join(" · ")}
         </span>
         <span className="display" style={{ fontSize: 24, lineHeight: 1.2, transition: "color 160ms" }}>
           {item.title}
