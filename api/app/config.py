@@ -43,6 +43,11 @@ class Settings(BaseSettings):
     # IndexNow (Bing, Copilot, Yandex, Seznam, Naver). Empty disables pings.
     indexnow_key: str = ""
 
+    # Email notifications (Resend). Empty key disables them.
+    resend_api_key: SecretStr = Field(default=SecretStr(""))
+    notify_email: str = "daniel@tudoranaclark.com"
+    notify_from: str = "Tudorana Clark <notifications@tudoranaclark.com>"
+
     # Managed identity client id in Azure; unset locally so az login is used.
     azure_client_id: str = ""
 

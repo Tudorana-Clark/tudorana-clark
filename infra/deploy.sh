@@ -62,14 +62,15 @@ if [[ $TARGET == all || $TARGET == api ]]; then
   echo "› Deploying $API_APP (internal ingress — not reachable from the internet)"
   args=()
   if [[ $MODE == full ]]; then
-    args+=("admin-api-key=$(secret ADMIN_API_KEY)" "indexnow-key=$(secret INDEXNOW_KEY)")
+    args+=("admin-api-key=$(secret ADMIN_API_KEY)" "indexnow-key=$(secret INDEXNOW_KEY)" "resend-api-key=$(secret RESEND_API_KEY)")
   fi
   args+=(-- ENVIRONMENT=production STORAGE_BACKEND=cosmos LOG_LEVEL=INFO
     "SITE_URL=$SITE_URL" "AZURE_CLIENT_ID=$CLIENT_ID"
     "COSMOS_ENDPOINT=$(out cosmosEndpoint)" "STORAGE_ACCOUNT=$(out storageAccount)" "MEDIA_BASE_URL=$(out mediaBaseUrl)"
-    "OPENAI_ENDPOINT=$(out openAiEndpoint)" "OPENAI_DEPLOYMENT=$(out openAiDeployment)")
+    "OPENAI_ENDPOINT=$(out openAiEndpoint)" "OPENAI_DEPLOYMENT=$(out openAiDeployment)"
+    "NOTIFY_EMAIL=${NOTIFY_EMAIL:-daniel@tudoranaclark.com}")
   if [[ $MODE == full ]]; then
-    args+=(ADMIN_API_KEY=secretref:admin-api-key INDEXNOW_KEY=secretref:indexnow-key)
+    args+=(ADMIN_API_KEY=secretref:admin-api-key INDEXNOW_KEY=secretref:indexnow-key RESEND_API_KEY=secretref:resend-api-key)
   fi
   upsert "$API_APP" "$LOGIN/api:$TAG" internal 8000 0 1 0.25 0.5Gi "${args[@]}"
 fi

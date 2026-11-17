@@ -15,6 +15,23 @@ const nextConfig: NextConfig = {
   cacheComponents: false,
   outputFileTracingIncludes: { "/**": ["./src/assets/**"] },
   experimental: { serverActions: { bodySizeLimit: "12mb" } }, // media uploads go through a server action
+  async redirects() {
+    return [
+      // One canonical host: the bare domain forwards to www (keeps Ghost-era search rankings).
+      { source: "/:path*", has: [{ type: "host", value: "tudoranaclark.com" }], destination: "https://www.tudoranaclark.com/:path*", permanent: true },
+      // Old Ghost URLs. Post slugs (/my-post/) are handled by app/(site)/[slug].
+      { source: "/articles", destination: "/writing", permanent: true },
+      { source: "/notes", destination: "/writing", permanent: true },
+      { source: "/contact", destination: "/about#contact", permanent: true },
+      { source: "/subscribe", destination: "/#newsletter", permanent: true },
+      { source: "/signin", destination: "/", permanent: true },
+      { source: "/signup", destination: "/#newsletter", permanent: true },
+      { source: "/tag/:tag*", destination: "/writing", permanent: true },
+      { source: "/author/:name*", destination: "/about", permanent: true },
+      { source: "/rss", destination: "/feed.xml", permanent: true },
+      { source: "/ghost/:path*", destination: "/studio", permanent: false },
+    ];
+  },
   async rewrites() {
     return {
       beforeFiles: [

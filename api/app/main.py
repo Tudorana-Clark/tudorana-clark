@@ -20,6 +20,7 @@ from .config import Settings, get_settings
 from .deps import Container
 from .errors import DomainError
 from .media import BlobMediaStore, MediaStore, MemoryMediaStore
+from .notify import Notifier, NullNotifier, ResendNotifier
 from .repository import CosmosRepository, MemoryRepository, Repository
 from .routers import admin, public
 from .service import ContentService
@@ -69,7 +70,9 @@ def build_container(settings: Settings, credential: DefaultAzureCredential | Non
         )
     else:
         ai = OfflineSeoGenerator()
-    return Container(repo=repo, media=media, ai=ai, content=ContentService(repo, settings))
+    key = settings.resend_api_key.get_secret_value()
+    notifier: Notifier = ResendNotifier(key, settings.notify_email, settings.notify_from, settings.site_url) if key else NullNotifier()
+    return Container(repo=repo, media=media, ai=ai, content=ContentService(repo, settings), notifier=notifier)
 
 
 def create_app(settings: Settings | None = None) -> FastAPI:
@@ -86,7 +89,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
             raise RuntimeError("ADMIN_API_KEY must be set in production")
         app.state.settings = settings
         app.state.container = build_container(settings, credential)
-        log.info("api_started", extra={"backend": settings.storage_backend, "ai": bool(settings.openai_endpoint)})
+        log.info("api_started", extra={"backend": settings.storage_backend, "ai": bool(settings.openai_endpoint), "email": bool(settings.resend_api_key.get_secret_value())})
         try:
             yield
         finally:
@@ -94,6 +97,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
             await c.repo.close()
             await c.media.close()
             await c.ai.close()
+            await c.notifier.close()
             if credential is not None:
                 await credential.close()
 

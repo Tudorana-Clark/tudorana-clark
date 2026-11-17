@@ -14,6 +14,7 @@ from .ai import SeoGenerator
 from .config import Settings
 from .errors import DomainError, RateLimited
 from .media import MediaStore
+from .notify import Notifier
 from .repository import Repository
 from .service import ContentService
 
@@ -24,6 +25,7 @@ class Container:
     media: MediaStore
     ai: SeoGenerator
     content: ContentService
+    notifier: Notifier
 
 
 def get_container(request: Request) -> Container:

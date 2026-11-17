@@ -6,6 +6,8 @@ from pydantic import SecretStr
 
 from app.config import Settings
 from app.main import create_app
+from app.models import ContactMessage, Subscriber
+from app.notify import _layout
 from app.text import reading_minutes, slugify
 
 KEY = "test-admin-key"
@@ -13,10 +15,30 @@ ADMIN = {"x-admin-key": KEY}
 PNG = b"\x89PNG\r\n\x1a\n" + b"\x00" * 32
 
 
+class RecordingNotifier:
+    def __init__(self) -> None:
+        self.sent: list[tuple[str, str]] = []
+
+    def new_subscriber(self, sub: Subscriber) -> None:
+        self.sent.append(("subscriber", sub.email))
+
+    def new_message(self, msg: ContactMessage) -> None:
+        self.sent.append(("contact", msg.email))
+
+    async def close(self) -> None:
+        return None
+
+
 @pytest.fixture
-def client() -> Iterator[TestClient]:
-    settings = Settings(environment="test", storage_backend="memory", admin_api_key=SecretStr(KEY), openai_endpoint="")
+def notifier() -> RecordingNotifier:
+    return RecordingNotifier()
+
+
+@pytest.fixture
+def client(notifier: RecordingNotifier) -> Iterator[TestClient]:
+    settings = Settings(environment="test", storage_backend="memory", admin_api_key=SecretStr(KEY), openai_endpoint="", resend_api_key=SecretStr(""))
     with TestClient(create_app(settings)) as c:
+        c.app.state.container.notifier = notifier  # type: ignore[attr-defined]
         yield c
 
 
@@ -103,7 +125,7 @@ def test_media_upload_validates_type(client: TestClient) -> None:
     assert bad.status_code == 400
 
 
-def test_subscribe_is_idempotent_and_rate_limited(client: TestClient) -> None:
+def test_subscribe_is_idempotent_and_rate_limited(client: TestClient, notifier: RecordingNotifier) -> None:
     first = client.post("/v1/subscribe", json={"email": "Reader@Example.com"}, headers={"x-client-ip": "1.1.1.1"})
     second = client.post("/v1/subscribe", json={"email": "reader@example.com"}, headers={"x-client-ip": "1.1.1.1"})
     assert first.json() == {"ok": True, "new": True}
@@ -113,9 +135,17 @@ def test_subscribe_is_idempotent_and_rate_limited(client: TestClient) -> None:
         client.post("/v1/subscribe", json={"email": "a@example.com"}, headers={"x-client-ip": "1.1.1.1"})
     assert client.post("/v1/subscribe", json={"email": "b@example.com"}, headers={"x-client-ip": "1.1.1.1"}).status_code == 429
     assert len(client.get("/v1/admin/subscribers", headers=ADMIN).json()) == 2
+    # One email per genuinely new subscriber, none for the repeat sign-up.
+    assert notifier.sent == [("subscriber", "reader@example.com"), ("subscriber", "a@example.com")]
 
 
-def test_contact(client: TestClient) -> None:
+def test_contact(client: TestClient, notifier: RecordingNotifier) -> None:
     body = {"name": "Ada", "email": "ada@example.com", "topic": "Speaking", "message": "Would you speak at our event?"}
     assert client.post("/v1/contact", json=body, headers={"x-client-ip": "2.2.2.2"}).status_code == 202
     assert client.get("/v1/admin/messages", headers=ADMIN).json()[0]["name"] == "Ada"
+    assert notifier.sent == [("contact", "ada@example.com")]
+
+
+def test_email_body_is_escaped() -> None:
+    out = _layout("New message", [("From", "<script>x</script>")], "<b>hi</b>")
+    assert "<script>" not in out and "&lt;script&gt;" in out and "&lt;b&gt;hi&lt;/b&gt;" in out

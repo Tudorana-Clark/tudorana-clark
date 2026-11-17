@@ -89,6 +89,14 @@ It uses the authorisation code flow with PKCE, and sessions last 12 hours. Passw
 When the custom domain is live, add `https://tudoranaclark.com/studio/auth/callback` to the app's redirect URIs.
 To give someone else access, assign them to the Entra app and add their object ID to `STUDIO_ALLOWED_OIDS`.
 
+## Email notifications (Resend)
+
+New newsletter subscribers and contact-form messages are emailed to `daniel@tudoranaclark.com` from `notifications@tudoranaclark.com` via Resend.
+- Contact emails set *Reply-To* to the sender, so pressing Reply answers them directly.
+- Emails are sent in the background with an idempotency key, after the record is saved, so a Resend outage never loses a submission or blocks the visitor.
+- Repeat sign-ups don't trigger an email.
+- The key is send-only, stored in `.secrets/app-secrets.json` as `RESEND_API_KEY` and as a Container Apps secret. Change the recipient with `NOTIFY_EMAIL`.
+
 ## Content model
 
 `article`, `note` → `/writing/<slug>` · `research` → `/research/<slug>` · `talk`, `video` → `/speaking/<slug>`.
@@ -97,7 +105,6 @@ Cosmos container `content` is partitioned by `/kind` and has a unique `/slug`. `
 
 ## Still to do
 
-- **Custom domain:** `az containerapp hostname add` + `bind` (managed certificate is free), then redeploy with `SITE_URL`.
 - **Brand photography:** upload in the studio, then redeploy with `PORTRAIT_URL=… STAGE_PHOTO_URL=…`.
 - **Ghost migration:** export JSON, convert to Markdown and POST to `/v1/admin/content` with `published_at` set to keep the original dates (see `api/scripts/seed.py`).
 - **Sending newsletters:** subscribers are stored now. Azure Communication Services Email can send them for about £0.0002 per email once the domain is verified.

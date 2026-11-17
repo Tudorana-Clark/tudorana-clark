@@ -9,6 +9,7 @@ import uuid
 from . import indexnow
 from .config import Settings
 from .models import ContactIn, ContactMessage, Content, ContentIn, Kind, Status, Subscriber, utcnow
+from .notify import Notifier
 from .repository import Repository
 from .text import reading_minutes, slugify, word_count
 
@@ -94,9 +95,15 @@ def subscriber_id(email: str) -> str:
     return hashlib.sha256(email.strip().lower().encode()).hexdigest()[:32]
 
 
-async def subscribe(repo: Repository, email: str, source: str) -> bool:
-    return await repo.add_subscriber(Subscriber(id=subscriber_id(email), email=email.strip().lower(), source=source))
+async def subscribe(repo: Repository, notifier: Notifier, email: str, source: str) -> bool:
+    sub = Subscriber(id=subscriber_id(email), email=email.strip().lower(), source=source)
+    created = await repo.add_subscriber(sub)
+    if created:  # only genuinely new sign-ups, never repeats
+        notifier.new_subscriber(sub)
+    return created
 
 
-async def contact(repo: Repository, data: ContactIn) -> None:
-    await repo.add_message(ContactMessage(**data.model_dump(), id=uuid.uuid4().hex))
+async def contact(repo: Repository, notifier: Notifier, data: ContactIn) -> None:
+    msg = ContactMessage(**data.model_dump(), id=uuid.uuid4().hex)
+    await repo.add_message(msg)  # stored first, so nothing is lost if email fails
+    notifier.new_message(msg)

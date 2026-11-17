@@ -20,8 +20,8 @@ param openAiModelVersion string = '2025-04-14'
 @description('Thousands of tokens per minute. Pay-per-token; capacity only caps throughput, it does not cost anything idle.')
 param openAiCapacity int = 30
 
-@description('GitHub repository (owner/name) allowed to deploy via OIDC, and the GitHub environment it must run in.')
-param githubRepo string = 'Tudorana-Clark/tudorana-clark'
+@description('GitHub repository allowed to deploy via OIDC, in GitHub\'s immutable "Owner@ownerId/repo@repoId" form (it\'s what the OIDC token\'s subject carries), and the environment it must run in.')
+param githubRepo string = 'Tudorana-Clark@129794963/tudorana-clark@1461299545'
 param githubEnvironment string = 'production'
 
 @description('Cosmos DB free tier: only one account per subscription may use it.')

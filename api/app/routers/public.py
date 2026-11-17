@@ -31,7 +31,7 @@ async def get_published(slug: str, c: ContainerDep) -> Content:
 @router.post("/subscribe", status_code=status.HTTP_200_OK)
 async def post_subscribe(body: SubscribeIn, c: ContainerDep, key: Annotated[str, Depends(client_key)]) -> dict[str, bool]:
     public_writes.check(f"sub:{key}")
-    created = await subscribe(c.repo, body.email, body.source)
+    created = await subscribe(c.repo, c.notifier, body.email, body.source)
     # Same response either way: don't reveal whether an address is already on the list.
     return {"ok": True, "new": created}
 
@@ -39,5 +39,5 @@ async def post_subscribe(body: SubscribeIn, c: ContainerDep, key: Annotated[str,
 @router.post("/contact", status_code=status.HTTP_202_ACCEPTED)
 async def post_contact(body: ContactIn, c: ContainerDep, key: Annotated[str, Depends(client_key)]) -> dict[str, bool]:
     public_writes.check(f"contact:{key}")
-    await contact(c.repo, body)
+    await contact(c.repo, c.notifier, body)
     return {"ok": True}
