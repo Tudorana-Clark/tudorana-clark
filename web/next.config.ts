@@ -19,7 +19,7 @@ const nextConfig: NextConfig = {
     return [
       // One canonical host: the bare domain forwards to www (keeps Ghost-era search rankings).
       { source: "/:path*", has: [{ type: "host", value: "tudoranaclark.com" }], destination: "https://www.tudoranaclark.com/:path*", permanent: true },
-      // Old Ghost URLs. Post slugs (/my-post/) are handled by app/(site)/[slug].
+      // Old Ghost URLs. Post slugs (/my-post/) now resolve directly at app/(site)/[slug].
       { source: "/articles", destination: "/writing", permanent: true },
       { source: "/notes", destination: "/writing", permanent: true },
       { source: "/contact", destination: "/about#contact", permanent: true },
@@ -36,6 +36,8 @@ const nextConfig: NextConfig = {
     return {
       beforeFiles: [
         { source: "/:section(writing|research|speaking)/:slug([a-z0-9-]+)\\.md", destination: "/md/:section/:slug" },
+        // Writing lives at /<slug>, so its Markdown twin is /<slug>.md.
+        { source: "/:slug([a-z0-9-]+)\\.md", destination: "/md/writing/:slug" },
         { source: "/:key([a-f0-9]{32})\\.txt", destination: "/indexnow/:key" },
       ],
       afterFiles: [],

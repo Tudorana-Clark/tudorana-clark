@@ -48,7 +48,7 @@ export function breadcrumbs(trail: { name: string; path: string }[]): Json {
 
 export function contentGraph(c: Content, section: { name: string; path: string }): Json {
   const url = absoluteUrl(pathFor(c));
-  const image = c.feature_image?.url ?? absoluteUrl(`${pathFor(c)}/opengraph-image`);
+  const image = c.feature_image?.url ?? absoluteUrl(`/og/${c.slug}`);
   const common: Json = {
     "@id": `${url}#content`,
     headline: c.seo.meta_title || c.title,

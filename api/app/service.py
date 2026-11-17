@@ -8,6 +8,7 @@ import uuid
 
 from . import indexnow
 from .config import Settings
+from .errors import Conflict
 from .models import ContactIn, ContactMessage, Content, ContentIn, Kind, Status, Subscriber, utcnow
 from .notify import Notifier
 from .repository import Repository
@@ -25,8 +26,23 @@ _SECTION = {
 _background: set[asyncio.Task[None]] = set()
 
 
+# Top-level paths owned by the web app; a writing slug (served at /<slug>) can't use them.
+# Mirrors RESERVED_SLUGS in web/src/lib/content.ts.
+RESERVED_SLUGS = frozenset(
+    "writing research speaking about studio api md indexnow feed rss sitemap robots llms llms-full og opengraph-image "
+    "twitter-image icon articles notes contact subscribe signin signup tag author ghost".split()
+)
+
+
 def public_path(kind: Kind, slug: str) -> str:
-    return f"/{_SECTION[kind]}/{slug}"
+    """Writing (articles, notes) lives at the root, /<slug>; other kinds keep their section."""
+    section = _SECTION[kind]
+    return f"/{slug}" if section == "writing" else f"/{section}/{slug}"
+
+
+def check_slug(kind: Kind, slug: str) -> None:
+    if _SECTION[kind] == "writing" and slug in RESERVED_SLUGS:
+        raise Conflict(f"The address /{slug} is reserved by the site. Choose a different web address.")
 
 
 def _derived(data: ContentIn) -> dict[str, int]:
@@ -45,6 +61,7 @@ class ContentService:
             slug=data.slug or slugify(data.title),
             **_derived(data),
         )
+        check_slug(content.kind, content.slug)
         return await self.repo.save(content)
 
     async def update(self, content_id: str, data: ContentIn) -> Content:
@@ -61,6 +78,7 @@ class ContentService:
                 **_derived(data),
             }
         )
+        check_slug(updated.kind, updated.slug)
         # Re-validate the merged document so nested dicts become models again.
         saved = await self.repo.save(Content.model_validate(updated.model_dump()))
         if saved.status == Status.published:
@@ -84,7 +102,7 @@ class ContentService:
 
     def _notify(self, content: Content) -> None:
         base = self.settings.site_url.rstrip("/")
-        urls = [f"{base}{public_path(content.kind, content.slug)}", f"{base}/", f"{base}/{_SECTION[content.kind]}"]
+        urls = [f"{base}{public_path(content.kind, content.slug)}", f"{base}/", f"{base}/{_SECTION[content.kind]}", f"{base}/sitemap.xml"]
         task = asyncio.create_task(indexnow.ping(base, self.settings.indexnow_key, urls))
         _background.add(task)
         task.add_done_callback(_background.discard)

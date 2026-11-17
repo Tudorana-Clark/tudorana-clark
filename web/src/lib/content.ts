@@ -13,9 +13,16 @@ export function sectionFor(kind: Kind) {
   return SECTION[kind];
 }
 
+/** Writing (articles, notes) lives at the root, /<slug>, as it did on Ghost; other kinds keep their section. */
 export function pathFor(item: { kind: Kind; slug: string }): string {
-  return `/${SECTION[item.kind]}/${item.slug}`;
+  return SECTION[item.kind] === "writing" ? `/${item.slug}` : `/${SECTION[item.kind]}/${item.slug}`;
 }
+
+/**
+ * Top-level paths owned by the app. A writing slug can't use these (it would be unreachable).
+ * Mirrors RESERVED_SLUGS in api/app/service.py.
+ */
+export const RESERVED_SLUGS = ["writing", "research", "speaking", "about", "studio", "api", "md", "indexnow", "feed", "rss", "sitemap", "robots", "llms", "llms-full", "og", "opengraph-image", "twitter-image", "icon", "articles", "notes", "contact", "subscribe", "signin", "signup", "tag", "author", "ghost"];
 
 export const KIND_LABEL: Record<Kind, string> = {
   article: "Article",

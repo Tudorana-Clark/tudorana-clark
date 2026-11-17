@@ -99,7 +99,8 @@ New newsletter subscribers and contact-form messages are emailed to `daniel@tudo
 
 ## Content model
 
-`article`, `note` → `/writing/<slug>` · `research` → `/research/<slug>` · `talk`, `video` → `/speaking/<slug>`.
+`article`, `note` → `/<slug>` (as on Ghost; `/writing/<slug>` permanently redirects) · `research` → `/research/<slug>` · `talk`, `video` → `/speaking/<slug>`. The `/writing` index page stays.
+A writing slug can't use a top-level address the site owns (`about`, `studio`, `writing`…), and the API refuses those with a clear message. The list is `RESERVED_SLUGS` in `web/src/lib/content.ts` and `api/app/service.py`.
 Edits made outside the studio (scripts, imports) show up within 5 minutes, or straight away after `curl -X POST -H "x-admin-key: $ADMIN_API_KEY" <site>/api/revalidate`.
 Cosmos container `content` is partitioned by `/kind` and has a unique `/slug`. `subscribers` and `messages` back the newsletter and contact forms; read them in **/studio/inbox**, with CSV export.
 

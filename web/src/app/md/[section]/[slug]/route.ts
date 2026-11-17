@@ -1,5 +1,5 @@
 import { getPublished } from "@/lib/api";
-import { sectionFor } from "@/lib/content";
+import { pathFor, sectionFor } from "@/lib/content";
 import { toMarkdown } from "@/lib/feeds";
 import { absoluteUrl } from "@/lib/site";
 
@@ -15,7 +15,7 @@ export async function GET(_req: Request, { params }: { params: Promise<{ section
     headers: {
       "content-type": "text/markdown; charset=utf-8",
       "cache-control": "public, max-age=600",
-      link: `<${absoluteUrl(`/${section}/${slug}`)}>; rel="canonical"`,
+      link: `<${absoluteUrl(pathFor(c))}>; rel="canonical"`,
       "x-robots-tag": "noindex", // the HTML page is canonical; this twin is for LLM fetchers
     },
   });
