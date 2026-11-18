@@ -97,7 +97,7 @@ if [[ $TARGET == all || $TARGET == web ]]; then
       "ENTRA_TENANT_ID=$(secret ENTRA_TENANT_ID)" "ENTRA_CLIENT_ID=$(secret ENTRA_CLIENT_ID)"
       ENTRA_CLIENT_SECRET=secretref:entra-client-secret "STUDIO_ALLOWED_OIDS=$(secret STUDIO_ALLOWED_OIDS)")
   fi
-  upsert "$WEB_APP" "$LOGIN/web:$TAG" external 3000 0 2 0.5 1Gi "${args[@]}"
+  upsert "$WEB_APP" "$LOGIN/web:$TAG" external 3000 "${WEB_MIN_REPLICAS:-0}" 2 0.5 1Gi "${args[@]}"
 fi
 
 # Smoke test: the public site must answer (allow for a cold start).
