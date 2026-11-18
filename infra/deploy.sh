@@ -74,7 +74,7 @@ if [[ $TARGET == all || $TARGET == api ]]; then
   if [[ $MODE == full ]]; then
     args+=(ADMIN_API_KEY=secretref:admin-api-key INDEXNOW_KEY=secretref:indexnow-key RESEND_API_KEY=secretref:resend-api-key)
   fi
-  upsert "$API_APP" "$LOGIN/api:$TAG" internal 8000 0 1 0.25 0.5Gi "${args[@]}"
+  upsert "$API_APP" "$LOGIN/api:$TAG" internal 8000 "${API_MIN_REPLICAS:-0}" 1 0.25 0.5Gi "${args[@]}"
 fi
 
 if [[ $TARGET == all || $TARGET == web ]]; then
