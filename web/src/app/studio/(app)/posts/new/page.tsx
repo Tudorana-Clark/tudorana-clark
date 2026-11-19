@@ -17,5 +17,6 @@ export default async function NewPostPage({ searchParams }: { searchParams: Prom
     const c = await admin.get(from).catch(() => null);
     if (c) initial = blankPost(c.seo.tldr || c.excerpt || c.title, { content_id: c.id, kind: c.kind, title: c.title, path: pathFor(c) }, null);
   }
-  return <PostEditor initial={initial} />;
+  const experiments = await studio.experiments().catch(() => []);
+  return <PostEditor initial={initial} experiments={experiments} />;
 }

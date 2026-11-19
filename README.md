@@ -106,6 +106,14 @@ Posts and articles are written and scored against one evidence-based rubric (`ap
 - **In the studio:** the post editor shows the score, what to fix first, and *Apply this fix* buttons. The article fact-check step shows a copy score with *Apply the suggestions*, which never adds figures or sources and leaves your field story alone. Editing a post marks its score out of date until you rescore it.
 - The score measures how closely the copy follows the evidence, **not predicted reach**. To change the rules, edit `copy_rubric.py`; the writer and the scorer both read it.
 
+## Results: testing what works (Studio → Results)
+
+The testing loop from Hopkins' *Scientific Advertising*, adapted to feeds (`api/app/results.py`).
+- **Record:** about a week after posting, open the post and copy LinkedIn's and X's numbers into its *Results* panel: impressions, reactions, comments, reposts, sends, saves and negatives, plus any enquiries you can trace to it.
+- **Measure:** the headline number is the **conversation rate**: comments, reposts, sends and saves per 100 impressions. Both feeds rank on those far more than on likes.
+- **Compare:** the Results page groups posts by score band, opening-line type and format, using medians (one viral post can't skew them). A group counts once it has **15 posts**. With 10 or more scored posts it also reports whether higher scores have gone with more conversation (Spearman rank correlation).
+- **Experiment:** start an experiment that changes one thing (for example, short against long hooks) and tag each post with its arm. Each arm needs 15 posts. A *lead* appears only when a Mann-Whitney test puts the gap below p = 0.05, and the advice is still to run it again before relying on it. Negatives are counted alongside, because a win that drives mutes isn't a win.
+
 ## Analytics and cookie consent
 
 Google Tag Manager (`GTM_ID` in `infra/site.env`) runs on public pages only, never on `/studio`. GA4 and any other tags are configured inside the GTM container.

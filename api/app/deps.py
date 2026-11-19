@@ -19,6 +19,7 @@ from .library import LibraryService
 from .media import MediaStore
 from .notify import Notifier
 from .repository import Repository
+from .results import ResultsService
 from .service import ContentService
 from .studio import StudioService
 
@@ -32,6 +33,7 @@ class Container:
     notifier: Notifier
     covers: CoverService
     studio: StudioService
+    results: ResultsService
     articles: ArticleService
     library: LibraryService
 

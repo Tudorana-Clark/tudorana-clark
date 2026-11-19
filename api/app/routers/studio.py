@@ -8,6 +8,8 @@ from ..models import (
     CoverBriefRequest,
     CoverBriefs,
     DraftResult,
+    Experiment,
+    ExperimentIn,
     Idea,
     IdeaIn,
     ImportPreview,
@@ -26,6 +28,7 @@ from ..models import (
     PostWriteResult,
     ResearchRequest,
     ResearchResult,
+    ResultsSummary,
     VoiceDraft,
     VoiceIn,
     VoiceProfile,
@@ -107,6 +110,34 @@ async def write_post(body: PostWriteRequest, c: ContainerDep) -> PostWriteResult
 @router.post("/posts/score", response_model=CopyScore)
 async def score_post(body: PostScoreRequest, c: ContainerDep) -> CopyScore:
     return await c.studio.score(body)
+
+
+# ---------- Results and experiments ----------
+
+
+@router.get("/results", response_model=ResultsSummary)
+async def results_summary(c: ContainerDep) -> ResultsSummary:
+    return await c.results.summary()
+
+
+@router.get("/experiments", response_model=list[Experiment])
+async def list_experiments(c: ContainerDep) -> list[Experiment]:
+    return await c.results.experiments()
+
+
+@router.post("/experiments", response_model=Experiment, status_code=status.HTTP_201_CREATED)
+async def create_experiment(body: ExperimentIn, c: ContainerDep) -> Experiment:
+    return await c.results.create_experiment(body)
+
+
+@router.put("/experiments/{exp_id}", response_model=Experiment)
+async def update_experiment(exp_id: str, body: ExperimentIn, c: ContainerDep) -> Experiment:
+    return await c.results.update_experiment(exp_id, body)
+
+
+@router.delete("/experiments/{exp_id}", status_code=status.HTTP_204_NO_CONTENT)
+async def delete_experiment(exp_id: str, c: ContainerDep) -> None:
+    await c.results.delete_experiment(exp_id)
 
 
 # ---------- Article workbench ----------

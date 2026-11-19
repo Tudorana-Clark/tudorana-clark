@@ -3,7 +3,7 @@ import "server-only";
 import { unstable_rethrow } from "next/navigation";
 
 import { env } from "./env";
-import type { ArticleWork, ContactMessage, CopyScore, ImportCandidate, LibrarySource, Content, ContentSummary, CoverBrief, CoverResult, Idea, Kind, Playbook, Post, PostWriteResult, SeoSuggestion, Subscriber, VoiceProfile } from "./types";
+import type { ArticleWork, ContactMessage, CopyScore, Experiment, ResultsSummary, ImportCandidate, LibrarySource, Content, ContentSummary, CoverBrief, CoverResult, Idea, Kind, Playbook, Post, PostWriteResult, SeoSuggestion, Subscriber, VoiceProfile } from "./types";
 
 interface ContentList {
   items: ContentSummary[];
@@ -150,6 +150,11 @@ export const studio = {
   // Writing, scoring and the automatic second pass can take a couple of minutes on Claude.
   write: (input: unknown) => request<PostWriteResult>(`${S}/posts/write`, json("POST", input, 230_000)),
   scorePost: (input: { linkedin: string; x: string; role: string }) => request<CopyScore>(`${S}/posts/score`, json("POST", input, 120_000)),
+  results: () => request<ResultsSummary>(`${S}/results`, get),
+  experiments: () => request<Experiment[]>(`${S}/experiments`, get),
+  createExperiment: (input: unknown) => request<Experiment>(`${S}/experiments`, json("POST", input)),
+  updateExperiment: (id: string, input: unknown) => request<Experiment>(`${S}/experiments/${encodeURIComponent(id)}`, json("PUT", input)),
+  deleteExperiment: (id: string) => request<void>(`${S}/experiments/${encodeURIComponent(id)}`, { method: "DELETE", admin: true, cache: "no-store" }),
   playbook: () => request<Playbook>(`${S}/playbook`, get),
   savePlaybook: (rules: string) => request<Playbook>(`${S}/playbook`, json("PUT", { rules })),
   articles: () => request<ArticleWork[]>(`${S}/articles`, get),

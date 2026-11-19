@@ -232,6 +232,85 @@ export interface CopyScore {
   scored_at: string;
 }
 
+// ---------- Results and experiments (API: results.py) ----------
+
+export interface ChannelResult {
+  impressions: number | null;
+  reactions: number | null;
+  comments: number | null;
+  reposts: number | null;
+  shares: number | null;
+  saves: number | null;
+  profile_visits: number | null;
+  link_clicks: number | null;
+  follows: number | null;
+  negatives: number | null;
+}
+
+export interface PostResults {
+  linkedin: ChannelResult | null;
+  x: ChannelResult | null;
+  inquiries: number;
+  measured_at: string | null;
+  notes: string;
+}
+
+export interface ExperimentInput {
+  name: string;
+  variable: string;
+  hypothesis: string;
+  arms: string[];
+  status: "running" | "concluded";
+  conclusion: string;
+}
+
+export interface Experiment extends ExperimentInput {
+  id: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface GroupStat {
+  key: string;
+  n: number;
+  median_rate: number | null;
+  median_impressions: number | null;
+  enough: boolean;
+}
+
+export interface ChannelSummary {
+  channel: "linkedin" | "x";
+  n: number;
+  median_rate: number | null;
+  median_reaction_rate: number | null;
+  median_impressions: number | null;
+  negatives: number;
+  by_band: GroupStat[];
+  by_hook: GroupStat[];
+  by_format: GroupStat[];
+  score_rho: number | null;
+  score_n: number;
+}
+
+export interface ExperimentSummary {
+  experiment: Experiment;
+  channel: "linkedin" | "x";
+  arms: { arm: string; n: number; median_rate: number | null; negatives: number }[];
+  verdict: "collecting" | "lead" | "no_clear_difference";
+  leader: string;
+  p_value: number | null;
+  note: string;
+}
+
+export interface ResultsSummary {
+  measured: number;
+  posted_unmeasured: number;
+  inquiries: number;
+  min_per_group: number;
+  channels: ChannelSummary[];
+  experiments: ExperimentSummary[];
+}
+
 export type PostStatus = "draft" | "ready" | "posted";
 export type PostVisual = "none" | "quote" | "image";
 
@@ -252,6 +331,9 @@ export interface PostInput extends PostCopy {
   role?: string;
   planned_for?: string | null;
   score?: CopyScore | null;
+  results?: PostResults | null;
+  experiment_id?: string | null;
+  arm?: string;
 }
 
 export interface PostWriteResult extends PostCopy {

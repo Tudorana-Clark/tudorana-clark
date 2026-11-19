@@ -28,6 +28,7 @@ from .library import LibraryService
 from .media import BlobMediaStore, MediaStore, MemoryMediaStore
 from .notify import Notifier, NullNotifier, ResendNotifier
 from .repository import CosmosRepository, MemoryRepository, Repository
+from .results import ResultsService
 from .routers import admin, public, studio
 from .service import ContentService
 from .studio import StudioService
@@ -138,6 +139,7 @@ def build_container(settings: Settings, credential: DefaultAzureCredential | Non
         notifier=notifier,
         covers=covers,
         studio=studio,
+        results=ResultsService(store),
         articles=ArticleService(store, repo, content, studio, article_writer, settings, library),
         library=library,
     )
@@ -193,10 +195,13 @@ def create_app(settings: Settings | None = None) -> FastAPI:
 
     @app.exception_handler(RequestValidationError)
     async def validation_error(_: Request, exc: RequestValidationError) -> JSONResponse:
-        first = exc.errors()[0] if exc.errors() else {}
+        # A custom validator's error carries the exception object in `ctx`, which isn't JSON: leave it out.
+        errors = [{k: v for k, v in e.items() if k not in ("ctx", "input")} for e in exc.errors()]
+        first = errors[0] if errors else {}
         field = ".".join(str(p) for p in first.get("loc", [])[1:]) or "request"
+        msg = str(first.get("msg", "invalid value")).removeprefix("Value error, ")
         return JSONResponse(
-            {"title": "Check the form", "detail": f"{field}: {first.get('msg', 'invalid value')}", "status": 422, "errors": exc.errors()},
+            {"title": "Check the form", "detail": f"{field}: {msg}", "status": 422, "errors": errors},
             status_code=422,
         )
 

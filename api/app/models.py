@@ -379,6 +379,109 @@ class CopyScore(BaseModel):
     scored_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
 
 
+# ---------- Results: what a post actually did (the Hopkins testing loop) ----------
+
+Count = Annotated[int, Field(ge=0, le=100_000_000)]
+
+
+class ChannelResult(BaseModel):
+    """Numbers copied from the platform's own analytics. Leave a field empty if the platform doesn't show it."""
+
+    model_config = ConfigDict(extra="forbid")
+    impressions: Count | None = None
+    reactions: Count | None = None  # likes and other reactions
+    comments: Count | None = None  # comments on LinkedIn, replies on X
+    reposts: Count | None = None  # reposts and quotes
+    shares: Count | None = None  # sends, DM shares and copied links
+    saves: Count | None = None  # LinkedIn saves, X bookmarks
+    profile_visits: Count | None = None
+    link_clicks: Count | None = None
+    follows: Count | None = None
+    negatives: Count | None = None  # unfollows, mutes, "not interested", hostile replies you can count
+
+
+class PostResults(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    linkedin: ChannelResult | None = None
+    x: ChannelResult | None = None
+    inquiries: Count = 0  # enquiries you can trace to this post
+    measured_at: date | None = None
+    notes: Annotated[str, StringConstraints(max_length=600)] = ""
+
+
+class ExperimentIn(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    name: Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=120)]
+    variable: Annotated[str, StringConstraints(strip_whitespace=True, max_length=120)] = ""  # the one thing that changes
+    hypothesis: Annotated[str, StringConstraints(strip_whitespace=True, max_length=600)] = ""
+    arms: list[Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=40)]] = Field(default_factory=lambda: ["A", "B"], min_length=2, max_length=4)
+    status: Literal["running", "concluded"] = "running"
+    conclusion: Annotated[str, StringConstraints(strip_whitespace=True, max_length=1000)] = ""
+
+    @field_validator("arms")
+    @classmethod
+    def _distinct(cls, v: list[str]) -> list[str]:
+        if len({a.lower() for a in v}) != len(v):
+            raise ValueError("Give each arm a different name.")
+        return v
+
+
+class Experiment(ExperimentIn):
+    model_config = ConfigDict(extra="ignore")
+    id: str
+    type: str = "experiment"
+    created_at: datetime = Field(default_factory=utcnow)
+    updated_at: datetime = Field(default_factory=utcnow)
+
+
+class GroupStat(BaseModel):
+    key: str
+    n: int
+    median_rate: float | None  # conversation per 100 impressions
+    median_impressions: float | None
+    enough: bool  # at least MIN_PER_GROUP posts: medians are worth comparing
+
+
+class ChannelSummary(BaseModel):
+    channel: Literal["linkedin", "x"]
+    n: int
+    median_rate: float | None
+    median_reaction_rate: float | None
+    median_impressions: float | None
+    negatives: int
+    by_band: list[GroupStat]
+    by_hook: list[GroupStat]
+    by_format: list[GroupStat]
+    score_rho: float | None  # Spearman correlation between score and conversation rate; None below MIN_FOR_CORRELATION
+    score_n: int
+
+
+class ArmStat(BaseModel):
+    arm: str
+    n: int
+    median_rate: float | None
+    negatives: int
+
+
+class ExperimentSummary(BaseModel):
+    experiment: Experiment
+    channel: Literal["linkedin", "x"]
+    arms: list[ArmStat]
+    verdict: Literal["collecting", "lead", "no_clear_difference"]
+    leader: str = ""
+    p_value: float | None = None
+    note: str
+
+
+class ResultsSummary(BaseModel):
+    measured: int  # posts with any results
+    posted_unmeasured: int  # posted, but no numbers entered yet
+    inquiries: int
+    min_per_group: int
+    channels: list[ChannelSummary]
+    experiments: list[ExperimentSummary]
+
+
 class PostStatus(StrEnum):
     draft = "draft"
     ready = "ready"
@@ -407,6 +510,9 @@ class PostIn(BaseModel):
     role: Annotated[str, StringConstraints(max_length=40)] = ""
     planned_for: datetime | None = None
     score: CopyScore | None = None
+    results: PostResults | None = None
+    experiment_id: Annotated[str, StringConstraints(max_length=64)] | None = None
+    arm: Annotated[str, StringConstraints(max_length=40)] = ""
 
 
 class Post(PostIn):

@@ -4,10 +4,11 @@ import { useRouter } from "next/navigation";
 import { useEffect, useId, useState, useTransition } from "react";
 
 import { deletePostAction, savePostAction, scorePostAction, writePostAction } from "@/app/studio/studio-actions";
-import type { CriterionScore, Post, PostInput, PostStatus, PostVisual } from "@/lib/types";
+import type { CriterionScore, Experiment, Post, PostInput, PostStatus, PostVisual } from "@/lib/types";
 
 import { CoverGenerator } from "./CoverGenerator";
 import { Panel, TextField } from "./fields";
+import { ResultsPanel } from "./ResultsPanel";
 import { ScorePanel } from "./ScorePanel";
 
 type Toast = { tone: "success" | "error"; text: string } | null;
@@ -25,8 +26,25 @@ const VISUALS: { key: PostVisual; label: string }[] = [
 ];
 
 function toInput(p: Post): PostInput {
-  const { seed, source, idea_id, linkedin, x, hook, visual, image, cover, status, role, planned_for, score } = p;
-  return { seed, source, idea_id, linkedin, x, hook, visual, image, cover, status, role: role ?? "", planned_for: planned_for ?? null, score: score ?? null };
+  const { seed, source, idea_id, linkedin, x, hook, visual, image, cover, status, role, planned_for, score, results, experiment_id, arm } = p;
+  return {
+    seed,
+    source,
+    idea_id,
+    linkedin,
+    x,
+    hook,
+    visual,
+    image,
+    cover,
+    status,
+    role: role ?? "",
+    planned_for: planned_for ?? null,
+    score: score ?? null,
+    results: results ?? null,
+    experiment_id: experiment_id ?? null,
+    arm: arm ?? "",
+  };
 }
 
 function useDebounced<T>(value: T, ms: number): T {
@@ -39,7 +57,7 @@ function useDebounced<T>(value: T, ms: number): T {
 }
 
 /** Short-form post editor: idea → drafts in the author's voice → refine → thumbnail → copy out. */
-export function PostEditor({ initial }: { initial: Post | PostInput }) {
+export function PostEditor({ initial, experiments = [] }: { initial: Post | PostInput; experiments?: Experiment[] }) {
   const router = useRouter();
   const saved = "id" in initial ? initial : null;
   const [doc, setDoc] = useState<Post | null>(saved);
@@ -263,6 +281,24 @@ export function PostEditor({ initial }: { initial: Post | PostInput }) {
                 Post to X
               </a>
             </div>
+          </Panel>
+
+          <Panel title="Results">
+            <ResultsPanel
+              results={form.results}
+              onChange={(r) => update("results", r)}
+              experiments={experiments}
+              experimentId={form.experiment_id}
+              arm={form.arm ?? ""}
+              onExperiment={(id, arm) => {
+                setForm((f) => ({ ...f, experiment_id: id, arm }));
+                setDirty(true);
+              }}
+              hasLinkedin={Boolean(form.linkedin.trim())}
+              hasX={Boolean(form.x.trim())}
+              posted={form.status === "posted"}
+              errorField={errorField}
+            />
           </Panel>
         </div>
 

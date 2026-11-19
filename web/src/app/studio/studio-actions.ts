@@ -95,6 +95,27 @@ const copySchema = z.object({
 
 const imageSchema = z.object({ url: z.url(), alt: z.string().max(300), width: z.number().int().nullish(), height: z.number().int().nullish() });
 
+const count = z.number().int("Use whole numbers.").min(0, "Numbers can’t be negative.").max(100_000_000).nullable();
+const channelResultSchema = z.object({
+  impressions: count,
+  reactions: count,
+  comments: count,
+  reposts: count,
+  shares: count,
+  saves: count,
+  profile_visits: count,
+  link_clicks: count,
+  follows: count,
+  negatives: count,
+});
+const resultsSchema = z.object({
+  linkedin: channelResultSchema.nullable(),
+  x: channelResultSchema.nullable(),
+  inquiries: z.number().int("Use whole numbers.").min(0, "Numbers can’t be negative.").max(100_000_000),
+  measured_at: z.iso.date("Use a valid date.").nullable(),
+  notes: z.string().max(600, "Keep notes under 600 characters."),
+});
+
 const postSchema = copySchema.extend({
   seed: z.string().trim().min(1, "Write the idea first.").max(2000),
   source: z.object({ content_id: z.string(), kind: KIND, title: z.string().max(300), path: z.string().max(300) }).nullable(),
@@ -107,6 +128,9 @@ const postSchema = copySchema.extend({
   planned_for: z.string().nullish(),
   // Produced by the API and passed back untouched; the API validates its shape and marks it stale after edits.
   score: z.custom<CopyScore>((v) => typeof v === "object" && v !== null && "total" in v).nullish(),
+  results: resultsSchema.nullish(),
+  experiment_id: z.string().max(64).nullish(),
+  arm: z.string().max(40).optional(),
 });
 
 export async function savePostAction(id: string | null, input: z.input<typeof postSchema>): Promise<ActionResult<Post>> {
@@ -119,7 +143,8 @@ export async function savePostAction(id: string | null, input: z.input<typeof po
   const data = { ...parsed.data, cover: parsed.data.image ? parsed.data.cover : null };
   try {
     const saved = id ? await studio.updatePost(id, data) : await studio.createPost(data);
-    return { ok: true, data: saved, message: saved.status === "posted" ? "Marked as posted." : "Post saved." };
+    const message = saved.status === "posted" ? (saved.results ? "Post and results saved." : "Marked as posted.") : "Post saved.";
+    return { ok: true, data: saved, message };
   } catch (err) {
     return fail(err);
   }
