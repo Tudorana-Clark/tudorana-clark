@@ -311,6 +311,31 @@ export interface ResultsSummary {
   experiments: ExperimentSummary[];
 }
 
+// ---------- Copy scores for anything in Content (API: content_copy.py) ----------
+
+export interface ContentScores {
+  id: string;
+  body: CopyScore;
+  social: CopyScore | null;
+  updated_at: string;
+}
+
+export interface ContentScoreSummary {
+  id: string;
+  total: number;
+  band: ScoreBand;
+  social_total: number | null;
+  stale: boolean;
+}
+
+export interface ContentRevision {
+  title: string;
+  excerpt: string;
+  body: string;
+  words_before: number;
+  words_after: number;
+}
+
 export type PostStatus = "draft" | "ready" | "posted";
 export type PostVisual = "none" | "quote" | "image";
 

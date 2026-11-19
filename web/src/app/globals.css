@@ -2781,3 +2781,54 @@ select.select-brand:not([data-empty="choice"]):has(option[value=""]:checked) {
   text-decoration-thickness: 2px;
   text-underline-offset: 6px;
 }
+.score-chip-total {
+  margin-left: 8px;
+  padding: 0 8px;
+  border-radius: var(--pill);
+  background: var(--card);
+  color: var(--ink);
+  font-size: 12px;
+  line-height: 20px;
+  font-variant-numeric: tabular-nums;
+}
+.chip[aria-selected="true"] .score-chip-total {
+  background: var(--white);
+}
+.score-cell {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+.score-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--line);
+}
+.score-dot[data-band="strong"] {
+  background: var(--success);
+}
+.score-dot[data-band="good"] {
+  background: var(--gold);
+}
+.score-dot[data-band="needs_work"] {
+  background: var(--brass);
+}
+.score-dot[data-band="weak"] {
+  background: var(--danger);
+}
+.score-tabs {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+  width: 100%;
+}
+.score-tabs .chip {
+  padding: 0 12px;
+  white-space: nowrap;
+  justify-content: center;
+  display: inline-flex;
+  align-items: center;
+}

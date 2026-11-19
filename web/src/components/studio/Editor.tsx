@@ -5,8 +5,9 @@ import { useCallback, useEffect, useRef, useState, useTransition } from "react";
 
 import { deleteContentAction, generateSeoAction, saveContentAction, setStatusAction } from "@/app/studio/actions";
 import { KIND_LABEL, pathFor } from "@/lib/content";
-import { type Content, type ContentInput, KINDS, type SocialCopy } from "@/lib/types";
+import { type Content, type ContentInput, type ContentScores, KINDS, type SocialCopy } from "@/lib/types";
 
+import { ContentScorePanel } from "./ContentScorePanel";
 import { CoverGenerator } from "./CoverGenerator";
 import { DatePicker } from "./DatePicker";
 import { LinesField, Panel, TextField } from "./fields";
@@ -31,7 +32,17 @@ const SOCIAL: { key: keyof SocialCopy; label: string; max: number; share?: (text
   { key: "bluesky", label: "Bluesky", max: 300, share: (t, u) => `https://bsky.app/intent/compose?text=${encodeURIComponent(`${t} ${u}`)}` },
 ];
 
-export function Editor({ initial, siteUrl, tagSuggestions }: { initial: Content | ContentInput; siteUrl: string; tagSuggestions: TagSuggestions }) {
+export function Editor({
+  initial,
+  siteUrl,
+  tagSuggestions,
+  initialScore = null,
+}: {
+  initial: Content | ContentInput;
+  siteUrl: string;
+  tagSuggestions: TagSuggestions;
+  initialScore?: ContentScores | null;
+}) {
   const router = useRouter();
   const saved = "id" in initial ? initial : null;
   const [doc, setDoc] = useState<Content | null>(saved);
@@ -284,7 +295,30 @@ export function Editor({ initial, siteUrl, tagSuggestions }: { initial: Content 
         </div>
 
         {/* Sidebar */}
-        <aside style={{ display: "flex", flexDirection: "column", gap: 16, position: "sticky", top: 72 }}>
+        <aside style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+          <Panel title="Copy score">
+            <ContentScorePanel
+              contentId={doc?.id ?? null}
+              kind={form.kind}
+              title={form.title}
+              body={form.body}
+              excerpt={form.excerpt}
+              linkedin={form.social.linkedin}
+              x={form.social.x}
+              initial={initialScore}
+              disabled={busy}
+              onRevision={(r) => {
+                setForm((f) => ({ ...f, title: r.title || f.title, body: r.body }));
+                setDirty(true);
+              }}
+              onSocial={(copy) => {
+                setForm((f) => ({ ...f, social: { ...f.social, ...copy } }));
+                setDirty(true);
+              }}
+              notify={(tone, text) => setToast({ tone, text })}
+            />
+          </Panel>
+
           <Panel title="Feature image">
             {form.feature_image ? (
               <>

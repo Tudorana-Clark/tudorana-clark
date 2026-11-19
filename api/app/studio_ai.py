@@ -18,6 +18,7 @@ from .claude_composer import ClaudeComposer
 from .copy_rubric import prompt_guidance
 from .errors import UpstreamUnavailable
 from .models import CoverBrief, PostCopy
+from .persona import persona_rule, personalise
 from .text import plain_text
 
 log = logging.getLogger(__name__)
@@ -137,7 +138,9 @@ class AzureStudioWriter:
         site: str,
         author: str,
         composer: ClaudeComposer | None = None,
+        short: str = "",
     ) -> None:
+        self._short = short
         # Post writing goes to Claude when configured (it decides the quality of every post); the rest stays on OpenAI.
         self._composer = composer
         token_provider = get_bearer_token_provider(credential, "https://cognitiveservices.azure.com/.default")
@@ -145,11 +148,17 @@ class AzureStudioWriter:
         self._deployment = deployment
         self._site, self._author = site, author
 
+    def _system(self, system: str) -> str:
+        return f"{system}\n\n{persona_rule(self._short, self._author)}" if self._short else system
+
+    def _p(self, text: str) -> str:
+        return personalise(text, self._short)
+
     async def _parse(self, system: str, user: str, schema: type[T], temperature: float, what: str) -> T:
         try:
             completion = await self._client.chat.completions.parse(
                 model=self._deployment,
-                messages=[{"role": "system", "content": system}, {"role": "user", "content": user}],
+                messages=[{"role": "system", "content": self._system(system)}, {"role": "user", "content": user}],
                 response_format=schema,
                 temperature=temperature,
             )
@@ -174,7 +183,7 @@ class AzureStudioWriter:
         )
         user = f"Content type: {kind}\nTitle: {title}\n\n---\n{plain_text(body)[:8000]}"
         out = await self._parse(system, user, _Briefs, 0.9, "cover_briefs")
-        return [CoverBrief(label=clip(b.label, 60), scene=clip(b.scene, 300), why=clip(b.why, 200)) for b in out.briefs[:4]]
+        return [CoverBrief(label=clip(b.label, 60), scene=clip(b.scene, 300), why=clip(self._p(b.why), 200)) for b in out.briefs[:4]]
 
     async def learn_voice(self, samples: list[tuple[str, str]]) -> str:
         system = (
@@ -183,7 +192,7 @@ class AzureStudioWriter:
         )
         user = "\n\n".join(f"### {t}\n{plain_text(b)[:3000]}" for t, b in samples)
         out = await self._parse(system, user, _Voice, 0.3, "learn_voice")
-        return clip(out.guide, 4000)
+        return clip(self._p(out.guide), 4000)
 
     async def mine_ideas(self, title: str, kind: str, body: str, voice: str) -> list[tuple[str, str]]:
         system = (
@@ -193,7 +202,7 @@ class AzureStudioWriter:
         )
         user = f"Content type: {kind}\nTitle: {title}\n\n---\n{plain_text(body)[:12000]}"
         out = await self._parse(system, user, _Ideas, 0.6, "mine_ideas")
-        return [(clip(i.text, 600), clip(i.angle, 300)) for i in out.ideas[:5] if i.text.strip()]
+        return [(clip(self._p(i.text), 600), clip(self._p(i.angle), 300)) for i in out.ideas[:5] if i.text.strip()]
 
     async def write_post(self, seed: str, source: str, voice: str, current: PostCopy | None, instruction: str) -> PostCopy:
         system = (
@@ -211,10 +220,10 @@ class AzureStudioWriter:
             parts.append(f"Extra direction: {instruction}")
         user = "\n\n".join(parts)
         if self._composer is not None:
-            out = await self._composer.parse(system, user, _PostOut, "write_post", effort="medium")
+            out = await self._composer.parse(self._system(system), user, _PostOut, "write_post", effort="medium")
         else:
             out = await self._parse(system, user, _PostOut, 0.7, "write_post")
-        return _to_copy(out)
+        return _to_copy(out.model_copy(update={"linkedin": self._p(out.linkedin), "x": self._p(out.x), "hook": self._p(out.hook)}))
 
     async def extract_sources(self, text: str) -> list[ExtractedSource]:
         system = (

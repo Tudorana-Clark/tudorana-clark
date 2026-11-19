@@ -2,15 +2,16 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 
 import { Editor } from "@/components/studio/Editor";
-import { admin, ApiError } from "@/lib/api";
+import { admin, ApiError, studio } from "@/lib/api";
 import { site } from "@/lib/site";
 import { tagSuggestions } from "@/lib/tags";
-import type { Content } from "@/lib/types";
+import type { Content, ContentScores } from "@/lib/types";
 
-async function load(id: string): Promise<{ content: Content; items: Awaited<ReturnType<typeof admin.list>> } | { error: string }> {
+async function load(id: string): Promise<{ content: Content; items: Awaited<ReturnType<typeof admin.list>>; score: ContentScores | null } | { error: string }> {
   try {
-    const [content, items] = await Promise.all([admin.get(id), admin.list().catch(() => [])]);
-    return { content, items };
+    // The stored copy score is optional: if it can't load, the editor still opens and can score afresh.
+    const [content, items, score] = await Promise.all([admin.get(id), admin.list().catch(() => []), studio.contentScore(id).catch(() => null)]);
+    return { content, items, score };
   } catch (err) {
     if (err instanceof ApiError && err.status === 404) notFound();
     return { error: err instanceof ApiError ? err.message : "Please try again." };
@@ -20,7 +21,7 @@ async function load(id: string): Promise<{ content: Content; items: Awaited<Retu
 export default async function EditContentPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   const result = await load(id);
-  if ("content" in result) return <Editor key={result.content.id} initial={result.content} siteUrl={site.url} tagSuggestions={tagSuggestions(result.items, result.content.id)} />;
+  if ("content" in result) return <Editor key={result.content.id} initial={result.content} siteUrl={site.url} tagSuggestions={tagSuggestions(result.items, result.content.id)} initialScore={result.score} />;
   return (
     <div role="alert" style={{ background: "var(--white)", borderRadius: 24, padding: 32, display: "flex", flexDirection: "column", gap: 12 }}>
       <h1 className="display" style={{ fontSize: 28 }}>

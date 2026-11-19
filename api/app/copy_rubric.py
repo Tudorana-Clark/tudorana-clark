@@ -570,7 +570,25 @@ def check_x(text: str, role: str = "") -> list[RuleResult]:
     return out
 
 
-def check_article(title: str, body: str) -> list[RuleResult]:
+# Which long-form rule checks apply to each kind of content. Articles and research papers are long reads that
+# need structure, figures and a Sources list; notes, talks and videos are short pages where those would be
+# padding, so they're judged on the copy itself (the judged criteria apply to every kind).
+LONG_FORM_RULES = {"a_headings", "a_sources", "a_figures", "a_title", "a_field_story"}
+RULES_BY_KIND: dict[str, set[str]] = {
+    "article": LONG_FORM_RULES,
+    "research": LONG_FORM_RULES,
+    "note": {"a_field_story"},
+    "talk": {"a_field_story"},
+    "video": {"a_field_story"},
+}
+
+
+def check_article(title: str, body: str, kind: str = "article") -> list[RuleResult]:
+    applies = RULES_BY_KIND.get(kind, LONG_FORM_RULES)
+    return [r for r in _check_long_form(title, body) if r.id in applies]
+
+
+def _check_long_form(title: str, body: str) -> list[RuleResult]:
     b = body.strip()
     if not b:
         return []

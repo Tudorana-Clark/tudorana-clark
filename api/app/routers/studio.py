@@ -4,6 +4,11 @@ from ..deps import ContainerDep, require_admin
 from ..models import (
     ArticleWork,
     ArticleWorkIn,
+    ContentReviseRequest,
+    ContentRevision,
+    ContentScoreRequest,
+    ContentScores,
+    ContentScoreSummary,
     CopyScore,
     CoverBriefRequest,
     CoverBriefs,
@@ -110,6 +115,29 @@ async def write_post(body: PostWriteRequest, c: ContainerDep) -> PostWriteResult
 @router.post("/posts/score", response_model=CopyScore)
 async def score_post(body: PostScoreRequest, c: ContainerDep) -> CopyScore:
     return await c.studio.score(body)
+
+
+# ---------- Copy scores for anything in Content ----------
+
+
+@router.post("/content-scores", response_model=ContentScores)
+async def score_content(body: ContentScoreRequest, c: ContainerDep) -> ContentScores:
+    return await c.content_copy.score(body)
+
+
+@router.get("/content-scores", response_model=list[ContentScoreSummary])
+async def content_score_summaries(c: ContainerDep) -> list[ContentScoreSummary]:
+    return await c.content_copy.summaries()
+
+
+@router.get("/content-scores/{content_id}", response_model=ContentScores | None)
+async def get_content_score(content_id: str, c: ContainerDep) -> ContentScores | None:
+    return await c.content_copy.get(content_id)
+
+
+@router.post("/content-scores/{content_id}/revise", response_model=ContentRevision)
+async def revise_content(content_id: str, body: ContentReviseRequest, c: ContainerDep) -> ContentRevision:
+    return await c.content_copy.revise(content_id, body)
 
 
 # ---------- Results and experiments ----------

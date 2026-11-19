@@ -482,6 +482,53 @@ class ResultsSummary(BaseModel):
     experiments: list[ExperimentSummary]
 
 
+# ---------- Copy scores for any piece in Content (articles, research, notes, talks, videos) ----------
+
+
+class ContentScoreRequest(BaseModel):
+    """Score the editor's current text. With content_id, the result is kept for the Content list and later fixes."""
+
+    model_config = ConfigDict(extra="forbid")
+    content_id: Annotated[str, StringConstraints(max_length=64)] | None = None
+    kind: Kind
+    title: Annotated[str, StringConstraints(strip_whitespace=True, max_length=300)] = ""
+    body: Annotated[str, StringConstraints(max_length=200_000)] = ""
+    linkedin: Annotated[str, StringConstraints(max_length=3000)] = ""
+    x: Annotated[str, StringConstraints(max_length=280)] = ""
+
+
+class ContentScores(BaseModel):
+    model_config = ConfigDict(extra="ignore")
+    id: str  # the content id
+    type: str = "content-score"
+    body: CopyScore
+    social: CopyScore | None = None
+    updated_at: datetime = Field(default_factory=utcnow)
+
+
+class ContentScoreSummary(BaseModel):
+    id: str
+    total: int
+    band: ScoreBand
+    social_total: int | None = None
+    stale: bool
+
+
+class ContentReviseRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    kind: Kind
+    title: Annotated[str, StringConstraints(strip_whitespace=True, max_length=300)]
+    body: Annotated[str, StringConstraints(min_length=1, max_length=200_000)]
+
+
+class ContentRevision(BaseModel):
+    title: str
+    excerpt: str
+    body: str
+    words_before: int
+    words_after: int
+
+
 class PostStatus(StrEnum):
     draft = "draft"
     ready = "ready"

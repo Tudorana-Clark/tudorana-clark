@@ -3,7 +3,7 @@ import "server-only";
 import { unstable_rethrow } from "next/navigation";
 
 import { env } from "./env";
-import type { ArticleWork, ContactMessage, CopyScore, Experiment, ResultsSummary, ImportCandidate, LibrarySource, Content, ContentSummary, CoverBrief, CoverResult, Idea, Kind, Playbook, Post, PostWriteResult, SeoSuggestion, Subscriber, VoiceProfile } from "./types";
+import type { ArticleWork, ContactMessage, ContentRevision, ContentScores, ContentScoreSummary, CopyScore, Experiment, ResultsSummary, ImportCandidate, LibrarySource, Content, ContentSummary, CoverBrief, CoverResult, Idea, Kind, Playbook, Post, PostWriteResult, SeoSuggestion, Subscriber, VoiceProfile } from "./types";
 
 interface ContentList {
   items: ContentSummary[];
@@ -150,6 +150,11 @@ export const studio = {
   // Writing, scoring and the automatic second pass can take a couple of minutes on Claude.
   write: (input: unknown) => request<PostWriteResult>(`${S}/posts/write`, json("POST", input, 230_000)),
   scorePost: (input: { linkedin: string; x: string; role: string }) => request<CopyScore>(`${S}/posts/score`, json("POST", input, 120_000)),
+  // Scoring the body, the social copy and (when revising) rewriting can take a couple of minutes on Claude.
+  scoreContent: (input: unknown) => request<ContentScores>(`${S}/content-scores`, json("POST", input, 180_000)),
+  contentScores: () => request<ContentScoreSummary[]>(`${S}/content-scores`, get),
+  contentScore: (id: string) => request<ContentScores | null>(`${S}/content-scores/${encodeURIComponent(id)}`, get),
+  reviseContent: (id: string, input: unknown) => request<ContentRevision>(`${S}/content-scores/${encodeURIComponent(id)}/revise`, json("POST", input, 230_000)),
   results: () => request<ResultsSummary>(`${S}/results`, get),
   experiments: () => request<Experiment[]>(`${S}/experiments`, get),
   createExperiment: (input: unknown) => request<Experiment>(`${S}/experiments`, json("POST", input)),

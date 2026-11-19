@@ -136,7 +136,7 @@ async def test_engine_scores_bands_and_revision_brief() -> None:
 
 async def test_engine_falls_back_to_rules_when_the_judge_fails() -> None:
     class Broken(OfflineCopyJudge):
-        async def judge(self, drafts, voice):  # type: ignore[no-untyped-def]
+        async def judge(self, drafts, voice, labels=None):  # type: ignore[no-untyped-def]
             from app.errors import UpstreamUnavailable
 
             raise UpstreamUnavailable("down")

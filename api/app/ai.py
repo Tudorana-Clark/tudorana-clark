@@ -9,8 +9,10 @@ from azure.identity.aio import DefaultAzureCredential, get_bearer_token_provider
 from openai import APIError, APITimeoutError, AsyncAzureOpenAI
 from pydantic import BaseModel, Field
 
+from .copy_rubric import prompt_guidance
 from .errors import UpstreamUnavailable
 from .models import FaqItem, SeoPack, SeoRequest, SeoSuggestion, SocialCopy
+from .persona import persona_rule, personalise, personalise_all
 from .text import plain_text, slugify
 
 log = logging.getLogger(__name__)
@@ -24,8 +26,13 @@ class _Faq(BaseModel):
 
 
 class _Social(BaseModel):
-    linkedin: str = Field(description="120-220 words. Hook line, 3 short paragraphs, 1 question to invite comments, 3 hashtags at the end. No link; it is added separately.")
-    x: str = Field(description="Max 240 characters, punchy, no hashtags spam (max 1). No link.")
+    linkedin: str = Field(
+        description=(
+            "Written as the author's own first-person post. 150-250 words. A hook under 80 characters on its own line, short paragraphs, "
+            "end with the takeaway or a genuine question, at most 3 hashtags on the last line. No link; it is added separately."
+        )
+    )
+    x: str = Field(description="70-240 characters: the sharpest single version of the point. At most one hashtag. No link.")
     facebook: str = Field(description="2-3 sentences, conversational.")
     threads: str = Field(description="Max 400 characters, conversational.")
     bluesky: str = Field(description="Max 260 characters.")
@@ -36,7 +43,9 @@ class _SeoOut(BaseModel):
     meta_description: str = Field(description="140-158 characters, states the answer, invites the click.")
     slug: str = Field(description="3-6 lowercase words joined by hyphens.")
     excerpt: str = Field(description="1-2 sentences for listing cards, under 220 characters.")
-    tldr: str = Field(description="A 2-3 sentence direct answer an AI assistant could quote verbatim, written in third person about the author's argument.")
+    tldr: str = Field(
+        description="A 2-3 sentence direct answer an AI assistant could quote verbatim, in the third person, naming the person who wrote it by the short name in the instructions."
+    )
     key_takeaways: list[str] = Field(description="3-5 standalone, factual, quotable statements.")
     faq: list[_Faq] = Field(description="3-5 questions real people would ask a search engine or chatbot, answered in 40-80 words each using only the article.")
     keywords: list[str] = Field(description="6-10 search phrases, most important first.")
@@ -50,7 +59,7 @@ _SYSTEM = (
     "You are the editor for {site}, the personal publication of {author}. "
     "You optimise content for classic search (Google, Bing) and for AI answer engines (ChatGPT, Copilot, Perplexity, Gemini, Claude). "
     "Rules: British English. Never invent facts, statistics, quotes or claims that are not in the source. "
-    "Prefer concrete, specific language over hype. No emoji. No clickbait."
+    "Prefer concrete, specific language over hype. No emoji. No clickbait. {persona}"
 )
 
 
@@ -77,8 +86,9 @@ def _clip(s: str, n: int) -> str:
     return s if len(s) <= n else s[: n - 1].rsplit(" ", 1)[0] + "…"
 
 
-def to_suggestion(out: _SeoOut) -> SeoSuggestion:
-    """Clamp model output to our validated limits so a verbose model can never break a save."""
+def to_suggestion(out: _SeoOut, short: str = "") -> SeoSuggestion:
+    """Clamp model output to our validated limits so a verbose model can never break a save, and name the author."""
+    out = _named(out, short) if short else out
     return SeoSuggestion(
         seo=SeoPack(
             meta_title=_clip(out.meta_title, 70),
@@ -103,8 +113,28 @@ def to_suggestion(out: _SeoOut) -> SeoSuggestion:
     )
 
 
+def _named(out: _SeoOut, short: str) -> _SeoOut:
+    """Swap any generic 'the author' the model wrote for the short name, across every text field."""
+
+    def p(text: str) -> str:
+        return personalise(text, short)
+
+    return out.model_copy(
+        update={
+            "meta_title": p(out.meta_title),
+            "meta_description": p(out.meta_description),
+            "excerpt": p(out.excerpt),
+            "tldr": p(out.tldr),
+            "key_takeaways": personalise_all(out.key_takeaways, short),
+            "faq": [_Faq(question=p(f.question), answer=p(f.answer)) for f in out.faq],
+            "image_alt_hint": p(out.image_alt_hint),
+            "social": _Social(linkedin=p(out.social.linkedin), x=p(out.social.x), facebook=p(out.social.facebook), threads=p(out.social.threads), bluesky=p(out.social.bluesky)),
+        }
+    )
+
+
 class AzureSeoGenerator:
-    def __init__(self, endpoint: str, deployment: str, api_version: str, timeout: float, credential: DefaultAzureCredential, site: str, author: str) -> None:
+    def __init__(self, endpoint: str, deployment: str, api_version: str, timeout: float, credential: DefaultAzureCredential, site: str, author: str, short: str = "") -> None:
         token_provider = get_bearer_token_provider(credential, "https://cognitiveservices.azure.com/.default")
         self._client = AsyncAzureOpenAI(
             azure_endpoint=endpoint,
@@ -114,7 +144,9 @@ class AzureSeoGenerator:
             max_retries=2,
         )
         self._deployment = deployment
-        self._system = _SYSTEM.format(site=site, author=author)
+        self._short = short
+        checklist = f"\n\nThe LinkedIn and X posts are scored against this checklist:\nLinkedIn:\n{prompt_guidance('linkedin')}\nX:\n{prompt_guidance('x')}"
+        self._system = _SYSTEM.format(site=site, author=author, persona=persona_rule(short, author) if short else "") + checklist
         self._concept_system = _CONCEPT_SYSTEM.format(site=site)
 
     async def generate(self, req: SeoRequest) -> SeoSuggestion:
@@ -137,7 +169,7 @@ class AzureSeoGenerator:
         parsed = completion.choices[0].message.parsed
         if parsed is None:
             raise UpstreamUnavailable("The AI assistant couldn’t produce suggestions for this text. Try adding more body copy.")
-        return to_suggestion(parsed)
+        return to_suggestion(parsed, self._short)
 
     async def concept(self, req: SeoRequest, direction: str = "") -> str:
         source = plain_text(req.body)[:6_000]

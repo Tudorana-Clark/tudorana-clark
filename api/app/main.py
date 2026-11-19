@@ -20,6 +20,7 @@ from .article_ai import ArticleWriter, AzureArticleWriter, OfflineArticleWriter
 from .articles import ArticleService
 from .claude_composer import ClaudeComposer
 from .config import Settings, get_settings
+from .content_copy import ContentCopyService
 from .copy_engine import AzureCopyJudge, CopyEngine, CopyJudge, OfflineCopyJudge
 from .covers import CoverService, ImageClient, MaiImageClient, OfflineImageClient, UnconfiguredImageClient, load_references
 from .deps import Container
@@ -78,6 +79,7 @@ def build_container(settings: Settings, credential: DefaultAzureCredential | Non
             credential,
             settings.site_name,
             settings.author_name,
+            settings.author_short_name,
         )
     else:
         ai = OfflineSeoGenerator()
@@ -99,6 +101,7 @@ def build_container(settings: Settings, credential: DefaultAzureCredential | Non
             settings.site_name,
             settings.author_name,
             composer,
+            settings.author_short_name,
         )
         judge = AzureCopyJudge(settings.openai_endpoint, settings.openai_deployment, settings.openai_api_version, settings.openai_timeout_seconds, credential, composer)
     else:
@@ -114,6 +117,7 @@ def build_container(settings: Settings, credential: DefaultAzureCredential | Non
             credential,
             settings.author_name,
             composer,
+            settings.author_short_name,
         )
     else:
         article_writer = OfflineArticleWriter()
@@ -129,7 +133,7 @@ def build_container(settings: Settings, credential: DefaultAzureCredential | Non
     key = settings.resend_api_key.get_secret_value()
     notifier: Notifier = ResendNotifier(key, settings.notify_email, settings.notify_from, settings.site_url) if key else NullNotifier()
     content = ContentService(repo, settings)
-    studio = StudioService(store, repo, writer, CopyEngine(judge))
+    studio = StudioService(store, repo, writer, CopyEngine(judge, settings.author_short_name))
     library = LibraryService(store, writer)
     return Container(
         repo=repo,
@@ -140,6 +144,7 @@ def build_container(settings: Settings, credential: DefaultAzureCredential | Non
         covers=covers,
         studio=studio,
         results=ResultsService(store),
+        content_copy=ContentCopyService(store, repo, studio, article_writer),
         articles=ArticleService(store, repo, content, studio, article_writer, settings, library),
         library=library,
     )

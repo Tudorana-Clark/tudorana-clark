@@ -1,18 +1,22 @@
 import { connection } from "next/server";
 import Link from "next/link";
 
-import { admin, ApiError } from "@/lib/api";
+import { admin, ApiError, studio } from "@/lib/api";
 import { formatShort, KIND_LABEL, pathFor } from "@/lib/content";
 import { StatusBadge } from "@/components/studio/StatusBadge";
-import { KINDS } from "@/lib/types";
+import { type ContentScoreSummary, KINDS } from "@/lib/types";
 
 export default async function StudioHome({ searchParams }: { searchParams: Promise<{ deleted?: string; status?: string }> }) {
   await connection();
   const { deleted, status } = await searchParams;
   let items: Awaited<ReturnType<typeof admin.list>> = [];
   let error: string | null = null;
+  let scores = new Map<string, ContentScoreSummary>();
   try {
-    items = await admin.list();
+    // Scores are extra context: if they fail to load, the list still shows.
+    const [list, summaries] = await Promise.all([admin.list(), studio.contentScores().catch(() => [] as ContentScoreSummary[])]);
+    items = list;
+    scores = new Map(summaries.map((s) => [s.id, s]));
   } catch (err) {
     error = err instanceof ApiError ? err.message : "Content couldn’t load.";
   }
@@ -80,7 +84,7 @@ export default async function StudioHome({ searchParams }: { searchParams: Promi
           </div>
         ) : (
           <div className="table-scroll">
-            <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 15, minWidth: 720 }}>
+            <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 15, minWidth: 820 }}>
               <caption className="sr-only">All content</caption>
               <thead>
                 <tr style={{ textAlign: "left", color: "var(--muted)", fontSize: 13 }}>
@@ -92,6 +96,9 @@ export default async function StudioHome({ searchParams }: { searchParams: Promi
                   </th>
                   <th scope="col" style={{ padding: 16, fontWeight: 500 }}>
                     Status
+                  </th>
+                  <th scope="col" style={{ padding: 16, fontWeight: 500 }}>
+                    Score
                   </th>
                   <th scope="col" style={{ padding: 16, fontWeight: 500 }}>
                     Updated
@@ -113,6 +120,9 @@ export default async function StudioHome({ searchParams }: { searchParams: Promi
                     <td style={{ padding: 16, color: "var(--muted)" }}>{KIND_LABEL[c.kind]}</td>
                     <td style={{ padding: 16 }}>
                       <StatusBadge status={c.status} />
+                    </td>
+                    <td style={{ padding: 16 }}>
+                      <ScoreCell score={scores.get(c.id)} />
                     </td>
                     <td style={{ padding: 16, color: "var(--muted)", whiteSpace: "nowrap" }}>{formatShort(c.updated_at)}</td>
                     <td style={{ padding: "16px 24px" }}>
@@ -138,5 +148,21 @@ export default async function StudioHome({ searchParams }: { searchParams: Promi
         )}
       </div>
     </div>
+  );
+}
+
+const BAND_LABEL: Record<ContentScoreSummary["band"], string> = { strong: "Strong", good: "Good", needs_work: "Needs work", weak: "Weak" };
+
+function ScoreCell({ score }: { score: ContentScoreSummary | undefined }) {
+  if (!score) return <span style={{ color: "var(--muted)", fontSize: 13 }}>Not scored</span>;
+  return (
+    <span className="score-cell" title={score.stale ? "Edited since it was scored" : undefined}>
+      <span className="score-dot" data-band={score.band} aria-hidden="true" />
+      <span>
+        {score.total}
+        <span className="sr-only"> out of 100, {BAND_LABEL[score.band]}</span>
+      </span>
+      {score.stale && <span style={{ color: "var(--muted)", fontSize: 12 }}>edited</span>}
+    </span>
   );
 }

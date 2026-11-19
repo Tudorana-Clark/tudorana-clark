@@ -19,6 +19,7 @@ from .claude_composer import ClaudeComposer
 from .copy_rubric import BY_ID, CONFIDENCE_WEIGHT, Channel, Criterion, RuleResult, check_article, check_linkedin, check_x, criteria
 from .errors import DomainError, UpstreamUnavailable
 from .models import ChannelScore, CopyScore, CriterionScore, PostCopy, ScoreBand
+from .persona import personalise
 
 log = logging.getLogger(__name__)
 
@@ -66,11 +67,11 @@ class Judgement(BaseModel):
 
 
 class CopyJudge(Protocol):
-    async def judge(self, drafts: dict[Channel, str], voice: str) -> Judgement: ...
+    async def judge(self, drafts: dict[Channel, str], voice: str, labels: dict[Channel, str] | None = None) -> Judgement: ...
     async def close(self) -> None: ...
 
 
-def _judge_prompt(drafts: dict[Channel, str], voice: str) -> tuple[str, str, list[Criterion]]:
+def _judge_prompt(drafts: dict[Channel, str], voice: str, labels: dict[Channel, str] | None = None) -> tuple[str, str, list[Criterion]]:
     items = [c for ch in drafts for c in criteria(ch, "judge")]
     rubric = "\n".join(f"- {c.id} [{c.channel}]: {c.label}. {c.guidance}" for c in items)
     system = (
@@ -80,7 +81,8 @@ def _judge_prompt(drafts: dict[Channel, str], voice: str) -> tuple[str, str, lis
         "never suggest adding facts, figures, clients or results that aren't already in the draft. If a point needs first-hand detail, say what kind of detail to add.\n\n"
         f"Rubric:\n{rubric}\n\nThe author's voice, for the 'sounds like you' criteria:\n{voice[:3000]}"
     )
-    user = "\n\n".join(f"### {ch.upper()} DRAFT\n{text[:30000]}" for ch, text in drafts.items())
+    names = labels or {}
+    user = "\n\n".join(f"### {names.get(ch, ch).upper()} DRAFT\n{text[:30000]}" for ch, text in drafts.items())
     return system, user, items
 
 
@@ -97,8 +99,8 @@ class AzureCopyJudge:
         self._client = AsyncAzureOpenAI(azure_endpoint=endpoint, api_version=api_version, azure_ad_token_provider=token, timeout=timeout, max_retries=1)
         self._deployment = deployment
 
-    async def judge(self, drafts: dict[Channel, str], voice: str) -> Judgement:
-        system, user, items = _judge_prompt(drafts, voice)
+    async def judge(self, drafts: dict[Channel, str], voice: str, labels: dict[Channel, str] | None = None) -> Judgement:
+        system, user, items = _judge_prompt(drafts, voice, labels)
         if self._composer is not None:
             out = await self._composer.parse(system, user, _Judgement, "copy_judge", effort="low")
             return _to_judgement(out, items)
@@ -125,7 +127,7 @@ class AzureCopyJudge:
 class OfflineCopyJudge:
     """Deterministic stand-in for tests and local runs: rewards figures and first-person detail."""
 
-    async def judge(self, drafts: dict[Channel, str], voice: str) -> Judgement:
+    async def judge(self, drafts: dict[Channel, str], voice: str, labels: dict[Channel, str] | None = None) -> Judgement:
         scores: dict[str, tuple[int, str, str]] = {}
         for ch, text in drafts.items():
             has_figure = any(t.isdigit() for t in text)
@@ -196,13 +198,14 @@ def fix_list(score: CopyScore, limit: int = 6) -> str:
 
 
 class CopyEngine:
-    def __init__(self, judge: CopyJudge) -> None:
+    def __init__(self, judge: CopyJudge, short: str = "") -> None:
         self.judge = judge
+        self.short = short
 
-    async def _assemble(self, drafts: dict[Channel, str], rules: dict[Channel, list[RuleResult]], voice: str, fp: str) -> CopyScore:
+    async def _assemble(self, drafts: dict[Channel, str], rules: dict[Channel, list[RuleResult]], voice: str, fp: str, labels: dict[Channel, str] | None = None) -> CopyScore:
         judged: Judgement | None = None
         try:
-            judged = await self.judge.judge(drafts, voice)
+            judged = await self.judge.judge(drafts, voice, labels)
         except (UpstreamUnavailable, DomainError) as exc:
             log.warning("copy_judge_unavailable", extra={"error": str(exc)})
 
@@ -222,6 +225,11 @@ class CopyEngine:
             weighted += CHANNEL_WEIGHT[ch] * score
             weight_sum += CHANNEL_WEIGHT[ch]
         total = round(weighted / weight_sum) if weight_sum else 0
+        if self.short:
+            p = self.short
+            all_items = [i.model_copy(update={"note": personalise(i.note, p), "suggestion": personalise(i.suggestion, p), "basis": personalise(i.basis, p)}) for i in all_items]
+            if judged is not None:
+                judged = judged.model_copy(update={"summary": personalise(judged.summary, p)})
         return CopyScore(
             total=total,
             band=band(total),
@@ -246,10 +254,11 @@ class CopyEngine:
             raise DomainError("Write a LinkedIn or X draft first, then score it.")
         return await self._assemble(drafts, rules, voice, post_fingerprint(linkedin, x))
 
-    async def score_article(self, title: str, body: str, voice: str) -> CopyScore:
+    async def score_article(self, title: str, body: str, voice: str, kind: str = "article") -> CopyScore:
+        """Long-form copy: an article, research paper, note, talk or video page (checks adapt to the kind)."""
         if not body.strip():
-            raise DomainError("Draft the article first, then score it.")
-        return await self._assemble({"article": f"# {title}\n\n{body}"}, {"article": check_article(title, body)}, voice, fingerprint(title, body))
+            raise DomainError("Write the body first, then score it.")
+        return await self._assemble({"article": f"# {title}\n\n{body}"}, {"article": check_article(title, body, kind)}, voice, fingerprint(title, body), {"article": kind})
 
     async def close(self) -> None:
         await self.judge.close()

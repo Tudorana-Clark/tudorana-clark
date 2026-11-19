@@ -23,6 +23,8 @@ class Settings(BaseSettings):
     site_url: str = "http://localhost:3000"
     site_name: str = "Tudorana Clark"
     author_name: str = "Daniel Tudorana-Clark"
+    # How generated copy names the author in the third person ("DTC argues…"), never "the author".
+    author_short_name: str = "DTC"
 
     # Cosmos DB (keyless, via managed identity / az login)
     cosmos_endpoint: str = ""

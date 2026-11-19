@@ -13,6 +13,7 @@ from fastapi import Depends, Header, Request
 from .ai import SeoGenerator
 from .articles import ArticleService
 from .config import Settings
+from .content_copy import ContentCopyService
 from .covers import CoverService
 from .errors import DomainError, RateLimited
 from .library import LibraryService
@@ -34,6 +35,7 @@ class Container:
     covers: CoverService
     studio: StudioService
     results: ResultsService
+    content_copy: ContentCopyService
     articles: ArticleService
     library: LibraryService
 

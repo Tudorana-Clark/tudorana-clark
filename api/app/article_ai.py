@@ -22,6 +22,7 @@ from .claude_composer import ClaudeComposer
 from .copy_rubric import prompt_guidance
 from .errors import UpstreamUnavailable
 from .models import ArticleSource, ClaimCheck, OutlineSection, PostCopy
+from .persona import persona_rule, personalise
 from .studio_ai import clip
 from .text import plain_text
 
@@ -173,7 +174,7 @@ class ArticleWriter(Protocol):
     async def draft(self, brief: str, playbook: str, voice: str, sources: list[ArticleSource], field_notes: str) -> DraftOut: ...
     async def check(self, body: str, sources: list[ArticleSource], playbook: str, voice: str) -> CheckOut: ...
     async def distribute(self, title: str, body: str, url: str, voice: str) -> list[tuple[str, PostCopy]]: ...
-    async def revise(self, title: str, body: str, fixes: str, sources: list[ArticleSource], playbook: str, voice: str) -> DraftOut: ...
+    async def revise(self, title: str, body: str, fixes: str, sources: list[ArticleSource], playbook: str, voice: str, length_rule: str = "") -> DraftOut: ...
     async def close(self) -> None: ...
 
 
@@ -197,8 +198,17 @@ def _sources_block(sources: list[ArticleSource]) -> str:
 
 class AzureArticleWriter:
     def __init__(
-        self, endpoint: str, deployment: str, api_version: str, timeout: float, credential: DefaultAzureCredential, author: str, composer: ClaudeComposer | None = None
+        self,
+        endpoint: str,
+        deployment: str,
+        api_version: str,
+        timeout: float,
+        credential: DefaultAzureCredential,
+        author: str,
+        composer: ClaudeComposer | None = None,
+        short: str = "",
     ) -> None:
+        self._short = short
         # Drafting and fact-checking go to Claude when configured; outline, research and posts stay on the OpenAI deployment.
         self._composer = composer
         self._token = get_bearer_token_provider(credential, "https://cognitiveservices.azure.com/.default")
@@ -208,16 +218,22 @@ class AzureArticleWriter:
         self._timeout = timeout
         self._author = author
 
+    def _system(self, system: str) -> str:
+        return f"{system}\n\n{persona_rule(self._short, self._author)}" if self._short else system
+
+    def _p(self, text: str) -> str:
+        return personalise(text, self._short)
+
     async def _compose(self, system: str, user: str, schema: type[T], temperature: float, what: str) -> T:
         if self._composer is not None:
-            return await self._composer.parse(system, user, schema, what)
+            return await self._composer.parse(self._system(system), user, schema, what)
         return await self._parse(system, user, schema, temperature, what)
 
     async def _parse(self, system: str, user: str, schema: type[T], temperature: float, what: str) -> T:
         try:
             completion = await self._client.chat.completions.parse(
                 model=self._deployment,
-                messages=[{"role": "system", "content": system}, {"role": "user", "content": user}],
+                messages=[{"role": "system", "content": self._system(system)}, {"role": "user", "content": user}],
                 response_format=schema,
                 temperature=temperature,
             )
@@ -252,7 +268,7 @@ class AzureArticleWriter:
                 key = f"{key[:37]}-{len(seen)}"
             seen.add(key)
             sections.append(OutlineSection(key=key, title=clip(s.title, 120), purpose=clip(s.purpose, 600), research=clip(s.research, 300)))
-        return Outline(headlines=[clip(h, 200) for h in out.headlines[:3]], angle=clip(out.angle, 600), sections=sections)
+        return Outline(headlines=[clip(self._p(h), 200) for h in out.headlines[:3]], angle=clip(self._p(out.angle), 600), sections=sections)
 
     async def research(self, query: str, insight: str, purpose: str) -> tuple[list[ArticleSource], int]:
         instructions = (
@@ -337,21 +353,21 @@ class AzureArticleWriter:
         )
         user = f"{brief}\n\nSources the author approved:\n{_sources_block(sources)}\n\n{field}"
         out = await self._compose(system, user, _Draft, 0.5, "draft")
-        return DraftOut(title=clip(out.title, 200), excerpt=clip(out.excerpt, 400), body=out.body.strip()[:200_000])
+        return DraftOut(title=clip(self._p(out.title), 200), excerpt=clip(self._p(out.excerpt), 400), body=self._p(out.body.strip())[:200_000])
 
-    async def revise(self, title: str, body: str, fixes: str, sources: list[ArticleSource], playbook: str, voice: str) -> DraftOut:
+    async def revise(self, title: str, body: str, fixes: str, sources: list[ArticleSource], playbook: str, voice: str, length_rule: str = "") -> DraftOut:
         system = (
-            f"You are {self._author}'s editor. Revise the article to address the fixes listed, and change nothing else. "
+            f"You are {self._author}'s editor. Revise the piece to address the fixes listed, and change nothing else. "
             "Integrity rules: never add a figure, statistic, quote, source, client, result or anecdote that is not already in the draft or the sources list. "
             "Keep every figure exactly as written. Keep the 'From the field' section's facts exactly as they are, and keep any placeholder in bold brackets untouched. "
-            "Keep the '## Sources' list. Stay within 700 to 880 words before the Sources list. "
+            "Keep any Sources list, Markdown images, links and fenced code blocks (```...```) exactly as they are. "
+            f"{length_rule or 'Stay within 700 to 880 words before the Sources list.'} "
             "If a fix needs facts you don't have, leave that point as it is."
-            f"\n\nChecklist the article is scored against:\n{prompt_guidance('article')}"
-            f"\n\nPlaybook:\n{playbook}\n\nAuthor's voice:\n{voice}"
+            f"\n\nChecklist the piece is scored against:\n{prompt_guidance('article')}" + (f"\n\nPlaybook:\n{playbook}" if playbook else "") + f"\n\nAuthor's voice:\n{voice}"
         )
         user = f"Fixes:\n{fixes}\n\nSources the author approved:\n{_sources_block(sources)}\n\nCurrent title: {title}\n\nCurrent article:\n{body[:30000]}"
         out = await self._compose(system, user, _Draft, 0.3, "revise")
-        return DraftOut(title=clip(out.title, 200), excerpt=clip(out.excerpt, 400), body=out.body.strip()[:200_000])
+        return DraftOut(title=clip(self._p(out.title), 200), excerpt=clip(self._p(out.excerpt), 400), body=self._p(out.body.strip())[:200_000])
 
     async def check(self, body: str, sources: list[ArticleSource], playbook: str, voice: str) -> CheckOut:
         system = (
@@ -365,11 +381,11 @@ class AzureArticleWriter:
         user = f"Sources available:\n{_sources_block(sources)}\n\nArticle:\n{body[:30000]}"
         out = await self._compose(system, user, _Check, 0.0, "check")
         return CheckOut(
-            claims=[ClaimCheck(claim=clip(c.claim, 600), status=c.status, source_url=c.source_url[:500], note=clip(c.note, 400)) for c in out.claims[:60]],
-            voice_issues=[clip(v, 300) for v in out.voice_issues[:20]],
-            guardrail_issues=[clip(v, 300) for v in out.guardrail_issues[:20]],
+            claims=[ClaimCheck(claim=clip(c.claim, 600), status=c.status, source_url=c.source_url[:500], note=clip(self._p(c.note), 400)) for c in out.claims[:60]],
+            voice_issues=[clip(self._p(v), 300) for v in out.voice_issues[:20]],
+            guardrail_issues=[clip(self._p(v), 300) for v in out.guardrail_issues[:20]],
             has_field_story=out.has_field_story and FIELD_PLACEHOLDER not in body,
-            verdict=clip(out.verdict, 600),
+            verdict=clip(self._p(out.verdict), 600),
         )
 
     async def distribute(self, title: str, body: str, url: str, voice: str) -> list[tuple[str, PostCopy]]:
@@ -383,7 +399,9 @@ class AzureArticleWriter:
         )
         user = f"Title: {title}\nURL: {url}\n\n{body[:20000]}"
         out = await self._parse(system, user, _Posts, 0.7, "distribute")
-        return [(p.role, PostCopy(linkedin=clip(p.linkedin, 3000), x=clip(p.x, 280), hook=clip(p.hook.strip().strip('"“”'), 220))) for p in out.posts[:5]]
+        return [
+            (p.role, PostCopy(linkedin=clip(self._p(p.linkedin), 3000), x=clip(self._p(p.x), 280), hook=clip(self._p(p.hook.strip().strip('"“”')), 220))) for p in out.posts[:5]
+        ]
 
     async def close(self) -> None:
         await self._client.close()
@@ -433,7 +451,7 @@ class OfflineArticleWriter:
     async def check(self, body: str, sources: list[ArticleSource], playbook: str, voice: str) -> CheckOut:
         return CheckOut(claims=[], voice_issues=[], guardrail_issues=[], has_field_story=FIELD_PLACEHOLDER not in body, verdict="Offline check: review figures by hand.")
 
-    async def revise(self, title: str, body: str, fixes: str, sources: list[ArticleSource], playbook: str, voice: str) -> DraftOut:
+    async def revise(self, title: str, body: str, fixes: str, sources: list[ArticleSource], playbook: str, voice: str, length_rule: str = "") -> DraftOut:
         return DraftOut(title=title, excerpt=clip(plain_text(body), 200), body=body.replace("## Opening", "## The short answer", 1))
 
     async def distribute(self, title: str, body: str, url: str, voice: str) -> list[tuple[str, PostCopy]]:
