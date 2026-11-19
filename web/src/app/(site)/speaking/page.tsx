@@ -29,7 +29,7 @@ export default async function SpeakingPage({ searchParams }: { searchParams: Pro
 
   return (
     <>
-      <section className="wrap" style={{ paddingTop: 96, textAlign: "center", display: "flex", flexDirection: "column", alignItems: "center", gap: 22 }}>
+      <section className="wrap hero-top" style={{ textAlign: "center", display: "flex", flexDirection: "column", alignItems: "center", gap: 22 }}>
         <span className="eyebrow">Speaking and media</span>
         <h1 className="display h-hero" style={{ fontSize: 72, lineHeight: 1.0, maxWidth: 900 }}>
           Talks and appearances
@@ -54,7 +54,7 @@ export default async function SpeakingPage({ searchParams }: { searchParams: Pro
         </div>
       )}
 
-      <section className="wrap" style={{ marginTop: 96 }}>
+      <section className="wrap gap-top">
         <div className="split">
           <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
             <span className="eyebrow">Appearances</span>

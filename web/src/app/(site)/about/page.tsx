@@ -85,7 +85,7 @@ export default function AboutPage() {
           </div>
           <ol style={{ listStyle: "none", margin: 0, padding: 0 }}>
             {CAREER.map(([label, text], i) => (
-              <li key={label} className="row" style={{ gridTemplateColumns: "220px minmax(0,1fr)", padding: "26px 0" }}>
+              <li key={label} className="row timeline-row">
                 <span style={{ fontSize: 14, color: i === CAREER.length - 1 ? "var(--brass)" : "var(--muted)", fontWeight: 500 }}>{label}</span>
                 <p style={{ margin: 0, fontSize: 17, lineHeight: 1.6 }}>{text}</p>
               </li>

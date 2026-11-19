@@ -39,7 +39,8 @@ const paddedDate = new Intl.DateTimeFormat("en-GB", { day: "2-digit", month: "sh
 function safe(fmt: Intl.DateTimeFormat, iso: string | null | undefined): string {
   if (!iso) return "";
   const d = new Date(iso);
-  return Number.isNaN(d.getTime()) ? "" : fmt.format(d);
+  // en-GB abbreviates September as "Sept"; keep every short month to three letters so dates line up.
+  return Number.isNaN(d.getTime()) ? "" : fmt.format(d).replace(/\bSept\b/, "Sep");
 }
 
 export const formatLong = (iso: string | null | undefined) => safe(longDate, iso);

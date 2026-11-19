@@ -28,7 +28,7 @@ export async function ContentArticle({ content: c }: { content: Content }) {
         <nav aria-label="Breadcrumb" className="sr-only">
           <Link href="/">Home</Link> / <Link href={`/${section}`}>{SECTION_NAME[section]}</Link>
         </nav>
-        <Link href={`/${section}`} style={{ fontSize: 13, color: "var(--brass)", fontWeight: 600, letterSpacing: "0.04em", textTransform: "uppercase" }}>
+        <Link href={`/${section}`} className="tap-target" style={{ fontSize: 13, color: "var(--brass)", fontWeight: 600, letterSpacing: "0.04em", textTransform: "uppercase" }}>
           {kicker}
         </Link>
         <h1 className="display h-hero" style={{ fontSize: 68, lineHeight: 1.02, maxWidth: 960 }}>

@@ -49,7 +49,7 @@ export default async function ResearchPaper({ params }: Props) {
   return (
     <article>
       <JsonLd data={contentGraph(c, { name: "Research", path: "/research" }, docGraphExtras(segments, url))} />
-      <section className="wrap" style={{ paddingTop: 96, display: "flex", flexDirection: "column", gap: 22, maxWidth: 980, marginLeft: "auto", marginRight: "auto" }}>
+      <section className="wrap hero-top" style={{ display: "flex", flexDirection: "column", gap: 22, maxWidth: 980, marginLeft: "auto", marginRight: "auto" }}>
         <span className="eyebrow">{["Research", r?.institution, c.category].filter(Boolean).join(" · ")}</span>
         <h1 className="display h-hero" style={{ fontSize: 68, lineHeight: 1.02 }}>
           {c.title}
@@ -88,11 +88,11 @@ export default async function ResearchPaper({ params }: Props) {
       )}
 
       {c.seo.key_takeaways.length > 0 && (
-        <section className="wrap" style={{ marginTop: 96 }}>
+        <section className="wrap gap-top">
           <div className="dark-panel" style={{ display: "flex", flexDirection: "column", gap: 16 }}>
             <span style={{ fontSize: 13, color: "var(--gold)" }}>In short</span>
             {c.seo.tldr && (
-              <p className="display h-2" style={{ fontSize: 32, lineHeight: 1.15, color: "var(--white)", maxWidth: 900 }}>
+              <p className="display tldr-lead">
                 {c.seo.tldr}
               </p>
             )}
@@ -120,7 +120,7 @@ export default async function ResearchPaper({ params }: Props) {
       )}
 
       {(r?.pdf_url || c.feature_image) && (
-        <section className="wrap" style={{ marginTop: 96 }}>
+        <section className="wrap gap-top">
           <div className="g2">
             {r?.pdf_url && (
               <div className="card-xl" style={{ display: "flex", flexDirection: "column", gap: 20 }}>
@@ -155,7 +155,7 @@ export default async function ResearchPaper({ params }: Props) {
       )}
 
       {r?.citation && (
-        <section className="wrap" style={{ marginTop: 96, maxWidth: 820, marginLeft: "auto", marginRight: "auto", display: "flex", flexDirection: "column", gap: 14 }}>
+        <section className="wrap gap-top" style={{ maxWidth: 820, marginLeft: "auto", marginRight: "auto", display: "flex", flexDirection: "column", gap: 14 }}>
           <h2 className="display" style={{ fontSize: 28 }}>
             Cite this work
           </h2>

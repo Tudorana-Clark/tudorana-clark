@@ -39,7 +39,7 @@ export default async function HomePage() {
 
   return (
     <>
-      <section className="wrap" style={{ paddingTop: 96, textAlign: "center", display: "flex", flexDirection: "column", alignItems: "center", gap: 28 }}>
+      <section className="wrap hero-top" style={{ textAlign: "center", display: "flex", flexDirection: "column", alignItems: "center", gap: 28 }}>
         <h1 className="display h-hero" style={{ fontSize: 76, lineHeight: 1.0, maxWidth: 980 }}>
           Insights on AI, technology, business and the economy.
         </h1>
@@ -56,16 +56,16 @@ export default async function HomePage() {
 
       <section className="wrap" style={{ marginTop: 72 }}>
         <div className="g2">
-          <Link href={latest ? pathFor(latest) : "/writing"} className="card-xl" style={{ display: "flex", flexDirection: "column", gap: 28, color: "var(--ink)", minHeight: 560 }}>
+          <Link href={latest ? pathFor(latest) : "/writing"} className="card-xl hero-card">
             <CardHead title="Writing" subtitle="Articles, research and notes" />
-            <div style={{ flex: 1, minHeight: 380, background: "var(--white)", borderRadius: 20, padding: 32, display: "flex", flexDirection: "column", gap: 12, boxShadow: "0 1px 2px rgba(14,21,32,0.06)" }}>
+            <div className="hero-card-inner">
               {latest ? (
                 <>
                   <span className="kicker">Latest · {formatShort(latest.published_at)}</span>
                   <span className="display" style={{ fontSize: 36, lineHeight: 1.08 }}>
                     {latest.title}
                   </span>
-                  <span style={{ fontSize: 16, lineHeight: 1.65, color: "var(--muted)", marginTop: 4 }}>{latestLead}</span>
+                  <span className="hero-card-lead">{latestLead}</span>
                   <span style={{ marginTop: "auto", paddingTop: 12, fontSize: 14, fontWeight: 500, display: "inline-flex", alignItems: "center", gap: 8 }}>
                     Read the article <ArrowIcon />
                   </span>
@@ -75,9 +75,9 @@ export default async function HomePage() {
               )}
             </div>
           </Link>
-          <Link href="/about" className="card-xl" style={{ display: "flex", flexDirection: "column", gap: 28, color: "var(--ink)", minHeight: 560 }}>
+          <Link href="/about" className="card-xl hero-card">
             <CardHead title={site.author} subtitle="Founder-led, practitioner first" />
-            <Media image={site.images.portrait ? { url: site.images.portrait, alt: `Portrait of ${site.author}` } : null} tone="warm" focus="50% 28%" style={{ marginTop: "auto", flex: 1, minHeight: 380 }} sizes="(max-width: 860px) 100vw, 600px" />
+            <Media image={site.images.portrait ? { url: site.images.portrait, alt: `Portrait of ${site.author}` } : null} tone="warm" focus="50% 28%" style={{ marginTop: "auto", flex: 1 }} sizes="(max-width: 860px) 100vw, 600px" />
           </Link>
         </div>
       </section>

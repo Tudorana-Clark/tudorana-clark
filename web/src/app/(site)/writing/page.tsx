@@ -39,7 +39,7 @@ export default async function WritingPage() {
           ],
         }}
       />
-      <section style={{ paddingTop: 96, display: "flex", flexDirection: "column", gap: 22, maxWidth: 820 }}>
+      <section className="hero-top" style={{ display: "flex", flexDirection: "column", gap: 22, maxWidth: 820 }}>
         <span className="eyebrow">Publishing</span>
         <h1 className="display h-hero" style={{ fontSize: 72, lineHeight: 1.0 }}>
           Writing

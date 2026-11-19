@@ -54,7 +54,7 @@ export default async function ResearchIndex() {
     <div className="wrap">
       <JsonLd data={graph} />
 
-      <section style={{ paddingTop: 96, display: "flex", flexDirection: "column", gap: 24, maxWidth: 880 }}>
+      <section className="hero-top" style={{ display: "flex", flexDirection: "column", gap: 24, maxWidth: 880 }}>
         <span className="eyebrow">Research · {programme.name}</span>
         <h1 className="display h-hero" style={{ fontSize: 64, lineHeight: 1.02 }}>
           {programme.question}

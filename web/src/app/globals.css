@@ -3080,3 +3080,160 @@ select.select-brand:not([data-empty="choice"]):has(option[value=""]:checked) {
     border: 1px solid CanvasText;
   }
 }
+
+/* ---------- Mobile QA: spacing, tap targets, header, forms ---------- */
+
+.hero-top {
+  padding-top: 96px;
+}
+.gap-top {
+  margin-top: 96px;
+}
+.site-footer {
+  background: var(--card);
+  margin-top: 120px;
+}
+.footer-nav {
+  display: flex;
+  gap: 64px;
+  flex-wrap: wrap;
+  font-size: 14px;
+}
+.footer-col {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+/* Small text links keep their look but get a finger-sized hit area. */
+.tap-target,
+.footer-link {
+  position: relative;
+}
+.tap-target::after,
+.footer-link::after {
+  content: "";
+  position: absolute;
+  inset: -10px -6px;
+}
+.timeline-row {
+  grid-template-columns: 220px minmax(0, 1fr);
+  padding: 26px 0;
+}
+.tldr-lead {
+  margin: 0;
+  max-width: 900px;
+  font-size: 32px;
+  line-height: 1.15;
+  color: var(--white);
+}
+.hero-card {
+  display: flex;
+  flex-direction: column;
+  gap: 28px;
+  color: var(--ink);
+  min-height: 560px;
+}
+.hero-card-inner {
+  flex: 1;
+  min-height: 380px;
+  background: var(--white);
+  border-radius: 20px;
+  padding: 32px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  box-shadow: 0 1px 2px rgba(14, 21, 32, 0.06);
+}
+.hero-card .placeholder {
+  min-height: 380px;
+}
+.hero-card-lead {
+  font-size: 16px;
+  line-height: 1.65;
+  color: var(--muted);
+  margin-top: 4px;
+}
+
+@media (max-width: 860px) {
+  /* Header: logo and Subscribe share the first row; the section links scroll sideways on the second. */
+  .nav {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 4px 16px;
+    padding: 12px 0 4px;
+  }
+  .nav > .links {
+    grid-column: 1 / -1;
+    grid-row: 2;
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    scrollbar-width: none;
+    gap: 0 20px;
+    margin: 0 -16px;
+    padding: 0 16px;
+  }
+  .nav > .links::-webkit-scrollbar {
+    display: none;
+  }
+  .nav > .links a {
+    white-space: nowrap;
+  }
+  .nav > .pill {
+    grid-row: 1;
+    grid-column: 2;
+  }
+  /* iOS Safari zooms the page into any field under 16px. */
+  .input,
+  .input-dark {
+    font-size: 16px;
+  }
+  .hero-top {
+    padding-top: 48px;
+  }
+  .gap-top {
+    margin-top: 64px;
+  }
+  .site-footer {
+    margin-top: 80px;
+  }
+  .footer-nav {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 32px 24px;
+  }
+  .footer-col {
+    gap: 14px;
+  }
+  .timeline-row {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 6px;
+    padding: 20px 0;
+  }
+  .tldr-lead {
+    font-size: 22px;
+    line-height: 1.3;
+  }
+  .hero-card {
+    min-height: 0;
+    padding: 24px 20px;
+    gap: 20px;
+  }
+  .hero-card-inner {
+    min-height: 0;
+    padding: 24px;
+  }
+  .hero-card .placeholder {
+    min-height: 320px;
+  }
+  .hero-card-lead {
+    display: -webkit-box;
+    -webkit-line-clamp: 6;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+}
+@media (max-width: 390px) {
+  .nav .nav-home svg {
+    height: 11px !important;
+  }
+}

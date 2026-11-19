@@ -7,18 +7,18 @@ import { Logo } from "./Logo";
 
 export function SiteFooter() {
   return (
-    <footer style={{ background: "var(--card)", marginTop: 120 }}>
+    <footer className="site-footer">
       <div className="wrap" style={{ paddingTop: 64, paddingBottom: 40, display: "flex", flexDirection: "column", gap: 48 }}>
         <div style={{ display: "flex", justifyContent: "space-between", gap: 40, flexWrap: "wrap" }}>
           <div style={{ display: "flex", flexDirection: "column", gap: 14, maxWidth: 360 }}>
-            <Link href="/" aria-label="Tudorana Clark home" style={{ color: "var(--ink)", alignSelf: "flex-start" }}>
+            <Link href="/" aria-label="Tudorana Clark home" className="nav-home" style={{ color: "var(--ink)", alignSelf: "flex-start" }}>
               <Logo />
             </Link>
             <p style={{ margin: 0, fontSize: 14, lineHeight: 1.6, color: "var(--muted)" }}>
               Insights on AI, technology, business and the economy. Personal website of {site.author}. Views are my own.
             </p>
           </div>
-          <nav aria-label="Footer" style={{ display: "flex", gap: 64, flexWrap: "wrap", fontSize: 14 }}>
+          <nav aria-label="Footer" className="footer-nav">
             <FooterCol title="Read" links={[["/writing", "Writing"], ["/research", "Research"], ["#newsletter", "Newsletter"], ["/feed.xml", "RSS"]]} />
             <FooterCol title="Watch and listen" links={[["/speaking", "Speaking"], ["/speaking#video", "Video"]]} />
             <FooterCol title="Connect" links={[[site.social.linkedin, "LinkedIn"], [site.social.x, "X"], ["/about#contact", "Contact"]]} />
@@ -38,15 +38,15 @@ export function SiteFooter() {
 
 function FooterCol({ title, links }: { title: string; links: [string, string][] }) {
   return (
-    <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+    <div className="footer-col">
       <span style={{ color: "var(--muted)" }}>{title}</span>
       {links.map(([href, label]) =>
         href.startsWith("http") ? (
-          <a key={href} href={href} rel="me noopener" target="_blank">
+          <a key={href} href={href} rel="me noopener" target="_blank" className="footer-link">
             {label}
           </a>
         ) : (
-          <Link key={href} href={href}>
+          <Link key={href} href={href} className="footer-link">
             {label}
           </Link>
         ),
