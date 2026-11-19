@@ -7,8 +7,8 @@ import { contactAction } from "@/app/actions";
 export const TOPICS = ["Speaking", "Advisory", "Research", "Media", "Something else"] as const;
 export type Topic = (typeof TOPICS)[number];
 
-/** `topic` preselects the Topic field, e.g. "Research" on the research page. */
-export function ContactForm({ topic, label = "Contact form" }: { topic?: Topic; label?: string } = {}) {
+/** `topic` preselects the Topic field, e.g. "Research" on the research page; `message` starts the message, e.g. a keynote booking. */
+export function ContactForm({ topic, label = "Contact form", message = "" }: { topic?: Topic; label?: string; message?: string } = {}) {
   const [state, action, pending] = useActionState(contactAction, null);
   const err = state?.ok === false ? state : null;
   const invalid = (f: string) => (err?.field === f ? true : undefined);
@@ -49,7 +49,7 @@ export function ContactForm({ topic, label = "Contact form" }: { topic?: Topic; 
       </label>
       <label className="field" style={{ gridColumn: "1 / -1" }}>
         Message
-        <textarea className="input" name="message" rows={5} required minLength={10} maxLength={5000} aria-invalid={invalid("message")} disabled={pending} />
+        <textarea className="input" name="message" rows={5} required minLength={10} maxLength={5000} defaultValue={message} aria-invalid={invalid("message")} disabled={pending} />
       </label>
       <div className="honeypot" aria-hidden="true">
         <label>

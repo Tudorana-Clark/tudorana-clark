@@ -2,10 +2,12 @@ import Link from "next/link";
 import { connection } from "next/server";
 
 import { LatestRow, TalkRow, VideoCard } from "@/components/ContentRows";
+import { KeynoteFeature } from "@/components/KeynoteFeature";
 import { Partners } from "@/components/Partners";
 import { ArrowIcon, Media, Notice, SectionIntro } from "@/components/ui";
 import { getPublished, listPublishedSafe } from "@/lib/api";
 import { formatShort, leadText, pathFor } from "@/lib/content";
+import { pinnedKeynote } from "@/lib/keynotes";
 import { site } from "@/lib/site";
 
 const CAREER = [
@@ -80,6 +82,10 @@ export default async function HomePage() {
         </div>
       </section>
 
+      <section className="wrap section-sm" aria-label="Pinned keynote">
+        <KeynoteFeature keynote={pinnedKeynote} secondary={{ href: "/speaking", label: "All speaking" }} />
+      </section>
+
       <section className="wrap section">
         <div className="split">
           <SectionIntro eyebrow="The founder" title="Twenty years of turning technology into growth." action={{ href: "/about", label: "Full profile" }} />
@@ -151,7 +157,7 @@ export default async function HomePage() {
       {talks.items.length > 0 && (
         <section className="wrap section">
           <div className="split">
-            <SectionIntro eyebrow="Speaking and media" title="On stage" action={{ href: "/about#contact", label: "Book Daniel to speak", primary: true }}>
+            <SectionIntro eyebrow="Speaking and media" title="On stage" action={{ href: "/speaking#book", label: "Book Daniel to speak", primary: true }}>
               <p style={{ margin: 0, fontSize: 15, lineHeight: 1.6, color: "var(--muted)", maxWidth: 360 }}>Keynotes, panels and business clubs on practical AI adoption.</p>
             </SectionIntro>
             <div>

@@ -2,10 +2,13 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { connection } from "next/server";
 
+import { ContactForm } from "@/components/ContactForm";
 import { TalkRow, VideoCard } from "@/components/ContentRows";
+import { KeynoteFeature } from "@/components/KeynoteFeature";
 import { Media, Notice, PlayIcon } from "@/components/ui";
 import { listPublishedSafe } from "@/lib/api";
 import { pathFor } from "@/lib/content";
+import { pinnedKeynote } from "@/lib/keynotes";
 import { site } from "@/lib/site";
 
 export const metadata: Metadata = {
@@ -15,8 +18,11 @@ export const metadata: Metadata = {
   openGraph: { url: "/speaking" },
 };
 
-export default async function SpeakingPage() {
+export default async function SpeakingPage({ searchParams }: { searchParams: Promise<{ keynote?: string }> }) {
   await connection();
+  const { keynote } = await searchParams;
+  // Arriving from a keynote's Book now starts the message for them.
+  const enquiry = keynote === pinnedKeynote.slug ? pinnedKeynote.enquiry : "";
   const [talks, videos] = await Promise.all([listPublishedSafe("talk", 50), listPublishedSafe("video", 30)]);
   const featured = videos.items.find((v) => v.featured) ?? videos.items[0];
   const rest = videos.items.filter((v) => v.id !== featured?.id).slice(0, 6);
@@ -29,9 +35,13 @@ export default async function SpeakingPage() {
           Talks and appearances
         </h1>
         <p style={{ margin: 0, fontSize: 19, lineHeight: 1.55, color: "var(--muted)", maxWidth: 620 }}>Practical AI adoption for business leaders, from keynote stages to business clubs. Tell me the audience, format and date.</p>
-        <Link className="pill" href="/about#contact">
-          Email me
+        <Link className="pill" href="#book">
+          Book Daniel to speak
         </Link>
+      </section>
+
+      <section className="wrap" style={{ marginTop: 64 }} aria-label="Pinned keynote">
+        <KeynoteFeature keynote={pinnedKeynote} />
       </section>
 
       <section className="wrap" style={{ marginTop: 64 }}>
@@ -104,22 +114,19 @@ export default async function SpeakingPage() {
         )}
       </section>
 
-      <section className="wrap section-sm">
-        <div className="card-xl pad-sm" style={{ padding: 56, display: "flex", justifyContent: "space-between", alignItems: "center", gap: 32, flexWrap: "wrap" }}>
-          <div style={{ display: "flex", flexDirection: "column", gap: 10, maxWidth: 620 }}>
-            <h2 className="display h-2" style={{ fontSize: 40, lineHeight: 1.05 }}>
-              Booking Daniel
+      <section id="book" aria-labelledby="book-title" className="wrap section-sm" style={{ scrollMarginTop: 24 }}>
+        <div className="split card-xl pad-sm" style={{ padding: 56 }}>
+          <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+            <span className="eyebrow">Book Daniel</span>
+            <h2 id="book-title" className="display h-2" style={{ fontSize: 40, lineHeight: 1.05, margin: 0 }}>
+              Bring a keynote to your event
             </h2>
-            <p style={{ margin: 0, fontSize: 16, lineHeight: 1.6, color: "var(--muted)" }}>Keynotes, panels, workshops and podcasts. A speaker pack with bio, headshots and topics is available on request.</p>
+            <p style={{ margin: 0, fontSize: 16, lineHeight: 1.6, color: "var(--muted)" }}>
+              Keynotes, panels, workshops and podcasts, including {pinnedKeynote.title}. Tell me the event, the date and who&apos;s in the room, and I&apos;ll reply with availability. A speaker pack with bio,
+              headshots and topics is available on request.
+            </p>
           </div>
-          <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
-            <Link className="pill" href="/about#contact">
-              Email me
-            </Link>
-            <Link className="pill ghost" href="/about#contact">
-              Speaker pack
-            </Link>
-          </div>
+          <ContactForm topic="Speaking" label="Speaking enquiry" message={enquiry} />
         </div>
       </section>
     </>
