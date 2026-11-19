@@ -79,7 +79,7 @@ export default async function StudioHome({ searchParams }: { searchParams: Promi
             </Link>
           </div>
         ) : (
-          <div style={{ overflowX: "auto" }}>
+          <div className="table-scroll">
             <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 15, minWidth: 720 }}>
               <caption className="sr-only">All content</caption>
               <thead>
@@ -115,15 +115,20 @@ export default async function StudioHome({ searchParams }: { searchParams: Promi
                       <StatusBadge status={c.status} />
                     </td>
                     <td style={{ padding: 16, color: "var(--muted)", whiteSpace: "nowrap" }}>{formatShort(c.updated_at)}</td>
-                    <td style={{ padding: "16px 24px", textAlign: "right", whiteSpace: "nowrap" }}>
-                      <Link className="pill ghost sm" href={`/studio/${c.id}`}>
-                        Edit
-                      </Link>{" "}
-                      {c.status === "published" && (
-                        <a className="pill ghost sm" href={pathFor(c)} target="_blank" rel="noopener" aria-label={`View ${c.title} on the site`}>
-                          View
-                        </a>
-                      )}
+                    <td style={{ padding: "16px 24px" }}>
+                      {/* Two fixed slots, so Edit lines up on every row whether or not there's a View. */}
+                      <div className="table-actions">
+                        <Link className="pill ghost sm" href={`/studio/${c.id}`}>
+                          Edit
+                        </Link>
+                        {c.status === "published" ? (
+                          <a className="pill ghost sm" href={pathFor(c)} target="_blank" rel="noopener" aria-label={`View ${c.title} on the site`}>
+                            View
+                          </a>
+                        ) : (
+                          <span aria-hidden="true" />
+                        )}
+                      </div>
                     </td>
                   </tr>
                 ))}

@@ -194,7 +194,7 @@ export function PostEditor({ initial, experiments = [] }: { initial: Post | Post
         </div>
       </div>
 
-      <div className="split post-editor-grid">
+      <div className="studio-split">
         <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
           <Panel title="Idea">
             <div className="field">

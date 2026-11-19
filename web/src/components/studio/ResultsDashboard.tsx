@@ -147,7 +147,7 @@ function ChannelPanel({ c, min }: { c: ChannelSummary; min: number }) {
 function GroupTable({ caption, groups, label, min }: { caption: string; groups: GroupStat[]; label: (k: string) => string; min: number }) {
   const max = Math.max(...groups.map((g) => g.median_rate ?? 0), 0);
   return (
-    <div style={{ overflowX: "auto" }}>
+    <div className="table-scroll">
       <table className="results-table">
         <caption>{caption}</caption>
         <thead>
@@ -243,7 +243,7 @@ function Experiments({ summary, experiments, onToast }: { summary: ResultsSummar
 
       <Panel title="Start an experiment">
         <form onSubmit={create} style={{ display: "flex", flexDirection: "column", gap: 12 }} noValidate>
-          <div className="results-grid">
+          <div className="results-pair">
             <div className="field">
               <label htmlFor={`${id}-name`}>Name</label>
               <input id={`${id}-name`} className="input" value={name} maxLength={120} onChange={(e) => setName(e.target.value)} placeholder="Hook length" required aria-invalid={errorField === "name" ? true : undefined} />
@@ -321,7 +321,7 @@ function ExperimentCard({ exp, stats, onToast }: { exp: Experiment; stats: Exper
 
       {stats.map((s) => (
         <div key={s.channel} style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-          <div style={{ overflowX: "auto" }}>
+          <div className="table-scroll">
             <table className="results-table">
               <caption>
                 {CHANNEL[s.channel]}

@@ -5,6 +5,8 @@ import { useId } from "react";
 
 import type { ChannelResult, Experiment, PostResults } from "@/lib/types";
 
+import { DatePicker } from "./DatePicker";
+
 type Field = keyof ChannelResult;
 
 const MAIN: { key: Field; label: string; x?: string }[] = [
@@ -99,7 +101,8 @@ export function ResultsPanel({
           <label htmlFor={`${id}-exp`}>Experiment</label>
           <select
             id={`${id}-exp`}
-            className="input"
+            className="input select-brand"
+            data-empty="choice"
             value={experimentId ?? ""}
             onChange={(e) => {
               const next = experiments.find((x) => x.id === e.target.value) ?? null;
@@ -118,7 +121,7 @@ export function ResultsPanel({
         {exp && (
           <div className="field">
             <label htmlFor={`${id}-arm`}>Arm</label>
-            <select id={`${id}-arm`} className="input" value={arm} onChange={(e) => onExperiment(exp.id, e.target.value)} aria-invalid={errorField === "arm" ? true : undefined}>
+            <select id={`${id}-arm`} className="input select-brand" value={arm} onChange={(e) => onExperiment(exp.id, e.target.value)} aria-invalid={errorField === "arm" ? true : undefined}>
               {exp.arms.map((a) => (
                 <option key={a} value={a}>
                   {a}
@@ -167,12 +170,9 @@ export function ResultsPanel({
         );
       })}
 
-      <div className="results-grid">
+      <div className="results-pair">
         <CountField id={`${id}-inq`} label="Enquiries from this post" value={r.inquiries} onChange={(v) => onChange({ ...r, inquiries: v ?? 0 })} invalid={errorField === "results.inquiries"} />
-        <div className="field">
-          <label htmlFor={`${id}-date`}>Measured on</label>
-          <input id={`${id}-date`} className="input" type="date" value={r.measured_at ?? ""} onChange={(e) => onChange({ ...r, measured_at: e.target.value || null })} aria-invalid={errorField === "results.measured_at" ? true : undefined} />
-        </div>
+        <DatePicker label="Measured on" value={r.measured_at ?? ""} onChange={(v) => onChange({ ...r, measured_at: v || null })} invalid={errorField === "results.measured_at"} />
       </div>
       <div className="field">
         <label htmlFor={`${id}-notes`}>Notes</label>

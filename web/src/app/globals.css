@@ -877,7 +877,7 @@ select.select-brand {
   background-repeat: no-repeat;
   background-position: right 18px center;
 }
-select.select-brand:has(option[value=""]:checked) {
+select.select-brand:not([data-empty="choice"]):has(option[value=""]:checked) {
   color: var(--muted);
 }
 
@@ -941,8 +941,9 @@ select.select-brand:has(option[value=""]:checked) {
     align-items: center;
     gap: 10px;
   }
-  /* The "Please select" prompt shows in the closed control only, not in the list. */
-  select.select-brand option[value=""] {
+  /* A "Please select" prompt shows in the closed control only, not in the list. Where the empty option is
+     a real choice ("General", "Not part of an experiment"), mark the select data-empty="choice" to keep it. */
+  select.select-brand:not([data-empty="choice"]) option[value=""] {
     display: none;
   }
   select.select-brand option:hover,
@@ -2477,17 +2478,6 @@ select.select-brand:has(option[value=""]:checked) {
   }
 }
 
-/* Post editor: drafts on the left, score and thumbnail on the right; one column on narrow screens. */
-.split.post-editor-grid {
-  grid-template-columns: minmax(0, 7fr) minmax(320px, 5fr);
-  gap: 24px;
-  align-items: start;
-}
-@media (max-width: 1023px) {
-  .split.post-editor-grid {
-    grid-template-columns: minmax(0, 1fr);
-  }
-}
 
 /* ---------- Results (studio) ---------- */
 
@@ -2661,4 +2651,133 @@ select.select-brand:has(option[value=""]:checked) {
   .results-bar {
     background: CanvasText;
   }
+}
+
+/* ---------- Studio shell ---------- */
+
+.studio-nav {
+  max-width: 1440px;
+  margin: 0 auto;
+  padding: 12px 32px;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 4px 24px;
+}
+.studio-brand {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  min-width: 0;
+}
+.studio-actions {
+  display: flex;
+  gap: 8px;
+  justify-self: end;
+}
+.studio-nav .links {
+  justify-content: center;
+  gap: 0 24px;
+}
+/* Below desktop width the links move to their own row and scroll sideways rather than wrapping. */
+@media (max-width: 1199px) {
+  .studio-nav {
+    grid-template-columns: minmax(0, 1fr) auto;
+  }
+  .studio-nav .links {
+    grid-column: 1 / -1;
+    grid-row: 2;
+    justify-content: flex-start;
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    scrollbar-width: none;
+    margin: 0 -32px;
+    padding: 0 32px;
+  }
+  .studio-nav .links::-webkit-scrollbar {
+    display: none;
+  }
+  .studio-nav .links a {
+    white-space: nowrap;
+  }
+}
+@media (max-width: 860px) {
+  .studio-nav {
+    padding: 12px 16px;
+  }
+  .studio-nav .links {
+    margin: 0 -16px;
+    padding: 0 16px;
+  }
+}
+@media (max-width: 559px) {
+  .studio-nav {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .studio-actions {
+    justify-self: start;
+  }
+  .studio-nav .links {
+    grid-row: 3;
+  }
+}
+
+/* Two-column studio pages: work on the left, tools on the right; one column below tablet-landscape. */
+.studio-split {
+  display: grid;
+  grid-template-columns: minmax(0, 7fr) minmax(320px, 5fr);
+  gap: 24px;
+  align-items: start;
+}
+.studio-split.wide-main {
+  grid-template-columns: minmax(0, 8fr) minmax(320px, 4fr);
+}
+@media (max-width: 899px) {
+  .studio-split,
+  .studio-split.wide-main {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+/* Wide tables scroll inside their card. Positioned so screen-reader-only text can't escape and widen the page. */
+.table-scroll {
+  position: relative;
+  overflow-x: auto;
+}
+.table-actions {
+  display: grid;
+  grid-template-columns: auto 72px;
+  gap: 8px;
+  justify-content: end;
+  align-items: center;
+}
+.table-actions > :last-child {
+  justify-self: start;
+}
+
+/* Two fields side by side, stacking on narrow screens. */
+.results-pair {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 12px;
+  align-items: start;
+}
+
+/* Number fields: no browser spinner arrows; type the figure. */
+.input[type="number"] {
+  appearance: textfield;
+  -moz-appearance: textfield;
+  font-variant-numeric: tabular-nums;
+}
+.input[type="number"]::-webkit-inner-spin-button,
+.input[type="number"]::-webkit-outer-spin-button {
+  appearance: none;
+  -webkit-appearance: none;
+  margin: 0;
+}
+.studio-nav .links a[aria-current="page"] {
+  color: var(--ink);
+  text-decoration: underline;
+  text-decoration-thickness: 2px;
+  text-underline-offset: 6px;
 }

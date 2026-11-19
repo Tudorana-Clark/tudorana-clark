@@ -203,7 +203,7 @@ export function Editor({ initial, siteUrl, tagSuggestions }: { initial: Content 
         </div>
       </div>
 
-      <div className="split" style={{ gridTemplateColumns: "minmax(0, 8fr) minmax(320px, 4fr)", gap: 24, alignItems: "start" }}>
+      <div className="studio-split wide-main">
         {/* Main column */}
         <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
           <div role="radiogroup" aria-label="Content type" style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
@@ -234,7 +234,7 @@ export function Editor({ initial, siteUrl, tagSuggestions }: { initial: Content 
             placeholder="Title"
             className="display"
             aria-invalid={errorField === "title" ? true : undefined}
-            style={{ fontSize: 44, lineHeight: 1.08, border: 0, background: "transparent", resize: "none", outline: "none", padding: 0, color: "var(--ink)", fieldSizing: "content" } as React.CSSProperties}
+            style={{ fontSize: 44, lineHeight: 1.08, border: 0, background: "transparent", resize: "none", outline: "none", padding: "0 0 4px", color: "var(--ink)", fieldSizing: "content" } as React.CSSProperties}
           />
           <TextField label="Subtitle (optional)" value={form.subtitle} onChange={(v) => update("subtitle", v)} max={300} />
           <MarkdownEditor value={form.body} onChange={(v) => update("body", v)} />

@@ -71,7 +71,7 @@ export function SourcePicker({ open, onClose, onAdd, sections, alreadyAdded, ini
           <label htmlFor={`${ids}-s`} className="sr-only">
             Section to add to
           </label>
-          <select id={`${ids}-s`} className="input" style={{ maxWidth: 220 }} value={section} onChange={(e) => setSection(e.target.value)}>
+          <select id={`${ids}-s`} className="input select-brand" data-empty="choice" style={{ maxWidth: 220 }} value={section} onChange={(e) => setSection(e.target.value)}>
             <option value="">General</option>
             {sections.map((s) => (
               <option key={s.key} value={s.key}>

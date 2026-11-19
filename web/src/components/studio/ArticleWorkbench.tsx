@@ -362,7 +362,7 @@ export function ArticleWorkbench({ initial }: { initial: ArticleWork }) {
                 <input className="input" name="title" required placeholder="Report title" aria-label="Report title" maxLength={300} />
                 <input className="input" name="sponsor" placeholder="Sponsor, if the research was paid for" aria-label="Sponsor" maxLength={300} />
                 <textarea className="input" name="finding" rows={2} placeholder="The figure or finding, exactly as the source states it" aria-label="Finding" maxLength={800} />
-                <select className="input" name="section" aria-label="Section" defaultValue="">
+                <select className="input select-brand" data-empty="choice" name="section" aria-label="Section" defaultValue="">
                   <option value="">General</option>
                   {form.outline.map((s) => (
                     <option key={s.key} value={s.key}>
@@ -444,7 +444,7 @@ export function ArticleWorkbench({ initial }: { initial: ArticleWork }) {
                 )}
                 {check.verdict && <p style={{ margin: 0, fontSize: 15, lineHeight: 1.55 }}>{check.verdict}</p>}
                 {check.claims.length > 0 && (
-                  <div style={{ overflowX: "auto" }}>
+                  <div className="table-scroll">
                     <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 14, minWidth: 560 }}>
                       <caption className="sr-only">Claims and their sources</caption>
                       <thead>

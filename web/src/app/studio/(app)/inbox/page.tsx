@@ -15,7 +15,7 @@ export default async function InboxPage() {
       <h1 className="display" style={{ fontSize: 40 }}>
         Inbox
       </h1>
-      <div className="split" style={{ gridTemplateColumns: "minmax(0,7fr) minmax(0,5fr)", gap: 24, alignItems: "start" }}>
+      <div className="studio-split">
         <section aria-labelledby="msgs-h" style={{ background: "var(--white)", borderRadius: 24, padding: 24, display: "flex", flexDirection: "column", gap: 16 }}>
           <h2 id="msgs-h" style={{ margin: 0, fontSize: 17 }}>
             Messages · {messages.length}
@@ -37,7 +37,7 @@ export default async function InboxPage() {
           ))}
         </section>
         <section aria-labelledby="subs-h" style={{ background: "var(--white)", borderRadius: 24, padding: 24, display: "flex", flexDirection: "column", gap: 16 }}>
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8 }}>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
             <h2 id="subs-h" style={{ margin: 0, fontSize: 17 }}>
               Subscribers · {subscribers.length}
             </h2>

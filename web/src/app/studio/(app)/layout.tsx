@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 
 import { Logo } from "@/components/Logo";
+import { StudioNavLinks } from "@/components/studio/StudioNavLinks";
 
 import { logoutAction } from "../actions";
 
@@ -14,26 +15,15 @@ export default function StudioLayout({ children }: { children: React.ReactNode }
         Skip to content
       </a>
       <header style={{ background: "var(--white)", borderBottom: "1px solid var(--line)" }}>
-        <nav className="wrap nav" aria-label="Studio" style={{ maxWidth: 1440 }}>
-          <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
+        <nav className="studio-nav" aria-label="Studio">
+          <div className="studio-brand">
             <Link href="/studio" className="nav-home" aria-label="Studio home">
               <Logo />
             </Link>
             <span style={{ fontSize: 13, color: "var(--brass)", fontWeight: 600, letterSpacing: "0.04em" }}>STUDIO</span>
           </div>
-          <div className="links">
-            <Link href="/studio">Content</Link>
-            <Link href="/studio/write">Write</Link>
-            <Link href="/studio/posts">Posts</Link>
-            <Link href="/studio/results">Results</Link>
-            <Link href="/studio/sources">Sources</Link>
-            <Link href="/studio/voice">Voice</Link>
-            <Link href="/studio/inbox">Inbox</Link>
-            <a href="/" target="_blank" rel="noopener">
-              View site
-            </a>
-          </div>
-          <div style={{ display: "flex", gap: 8 }}>
+          <StudioNavLinks />
+          <div className="studio-actions">
             <Link className="pill sm" href="/studio/new">
               New
             </Link>

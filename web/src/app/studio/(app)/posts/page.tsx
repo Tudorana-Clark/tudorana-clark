@@ -48,7 +48,7 @@ export default async function PostsPage() {
         </p>
       )}
 
-      <div className="split" style={{ gridTemplateColumns: "minmax(0, 7fr) minmax(320px, 5fr)", gap: 24, alignItems: "start" }}>
+      <div className="studio-split">
         <section aria-labelledby="library-h" style={{ background: "var(--white)", borderRadius: 24, overflow: "hidden" }}>
           <h2 id="library-h" style={{ margin: 0, padding: "20px 24px 12px", fontSize: 18, fontWeight: 600 }}>
             Library
