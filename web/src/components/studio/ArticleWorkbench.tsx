@@ -4,14 +4,15 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useId, useState } from "react";
 
-import { checkAction, deleteArticleAction, distributeAction, draftAction, outlineAction, researchAction, saveArticleAction } from "@/app/studio/article-actions";
+import { checkAction, deleteArticleAction, distributeAction, draftAction, outlineAction, polishAction, researchAction, saveArticleAction } from "@/app/studio/article-actions";
 import type { ArticleSource, ArticleWork, ArticleWorkInput, ClaimCheck, OutlineSection, Post } from "@/lib/types";
 
 import { Panel, TextField } from "./fields";
+import { ScorePanel } from "./ScorePanel";
 import { SourcePicker } from "./SourcePicker";
 
 type Toast = { tone: "success" | "error"; text: string } | null;
-type Busy = null | "save" | "outline" | "research" | "draft" | "check" | "distribute" | "delete";
+type Busy = null | "save" | "outline" | "research" | "draft" | "check" | "polish" | "distribute" | "delete";
 
 const STEPS = [
   { id: "brief", label: "Brief" },
@@ -102,7 +103,7 @@ export function ArticleWorkbench({ initial }: { initial: ArticleWork }) {
       const res = await step();
       if (!res.ok) return setToast({ tone: "error", text: res.error });
       accept(res.data, res.message);
-      if (kind === "draft") router.refresh();
+      if (kind === "draft" || kind === "polish") router.refresh();
     } catch {
       setToast({ tone: "error", text: "We couldn’t reach the studio server. Check your connection and try again." });
     } finally {
@@ -193,7 +194,7 @@ export function ArticleWorkbench({ initial }: { initial: ArticleWork }) {
         </nav>
         <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
           <span style={{ fontSize: 13, color: "var(--muted)" }} aria-live="polite">
-            {busy === "research" ? "Researching the web…" : busy === "draft" ? "Writing the draft…" : busy === "check" ? "Checking every claim…" : busy === "outline" ? "Planning the outline…" : busy ? "Working…" : dirty ? "Unsaved changes" : "All changes saved"}
+            {busy === "research" ? "Researching the web…" : busy === "draft" ? "Writing the draft…" : busy === "check" ? "Checking every claim and scoring the copy…" : busy === "polish" ? "Applying the suggestions…" : busy === "outline" ? "Planning the outline…" : busy ? "Working…" : dirty ? "Unsaved changes" : "All changes saved"}
           </span>
           <button
             type="button"
@@ -423,7 +424,9 @@ export function ArticleWorkbench({ initial }: { initial: ArticleWork }) {
               </button>
             }
           >
-            <p style={{ margin: 0, fontSize: 14, color: "var(--muted)", lineHeight: 1.55 }}>Checks the latest version in the editor: every figure against your sources, the length, your story, the voice and the political guardrails.</p>
+            <p style={{ margin: 0, fontSize: 14, color: "var(--muted)", lineHeight: 1.55 }}>
+              Checks the latest version in the editor: every figure against your sources, the length, your story, the voice and the political guardrails. It also scores the copy against the evidence on what makes writing land.
+            </p>
             {!check ? (
               <p style={{ margin: 0, color: "var(--muted)", fontSize: 15 }}>{work.content_id ? "Not checked yet." : "Write the draft first."}</p>
             ) : (
@@ -498,6 +501,23 @@ export function ArticleWorkbench({ initial }: { initial: ArticleWork }) {
                     ))}
                   </ul>
                 )}
+                <section aria-labelledby={`${ids}-score`} style={{ display: "flex", flexDirection: "column", gap: 12, borderTop: "1px solid var(--line)", paddingTop: 16 }}>
+                  <h3 id={`${ids}-score`} style={{ margin: 0, fontSize: 15, fontWeight: 600 }}>
+                    Copy score
+                  </h3>
+                  <ScorePanel
+                    score={check.copy_score}
+                    scoring={busy === "check" || busy === "polish"}
+                    onApplyAll={() => void run("polish", () => polishAction(work.id))}
+                    disabled={isBusy}
+                    emptyText="Run the check again to score the copy."
+                  />
+                  {check.copy_score && (
+                    <p className="form-note" style={{ color: "var(--muted)", margin: 0 }}>
+                      Applying the suggestions rewrites only what they cover, never adds figures or sources, and leaves your own story as written. Check again afterwards.
+                    </p>
+                  )}
+                </section>
                 <fieldset style={{ border: "1px solid var(--line)", borderRadius: 14, padding: 14, display: "flex", flexDirection: "column", gap: 8 }}>
                   <legend style={{ fontSize: 13, color: "var(--muted)", padding: "0 6px" }}>Your quality bar (for you to tick)</legend>
                   {["No number anyone could challenge", "At least one thing only I could have written", "Comfortable with a selection panel reading it in five years"].map((q) => (
@@ -515,10 +535,10 @@ export function ArticleWorkbench({ initial }: { initial: ArticleWork }) {
         <section id={`${ids}-distribute`}>
           <Panel title="7. Distribute">
             <p style={{ margin: 0, fontSize: 14, color: "var(--muted)", lineHeight: 1.55 }}>
-              Creates five posts in your library: the headline statistic, a contrarian line, a practical tip, a question and a link post. The link post is planned for launch day and the rest across the next two weeks.
+              Creates five posts in your library: the headline statistic, a contrarian line, a practical tip, a question and a link post. Each is scored, and any that score low are improved automatically. The link post is planned for launch day and the rest across the next two weeks.
             </p>
             <button type="button" className="pill sm" style={{ alignSelf: "flex-start" }} disabled={isBusy || !work.content_id} onClick={() => void distribute()}>
-              {busy === "distribute" ? "Writing posts…" : work.distributed.length ? "Create another set" : "Create the five posts"}
+              {busy === "distribute" ? "Writing and scoring posts…" : work.distributed.length ? "Create another set" : "Create the five posts"}
             </button>
             {work.distributed.length > 0 && posts.length === 0 && (
               <p className="form-note" style={{ color: "var(--muted)" }}>
@@ -530,6 +550,7 @@ export function ArticleWorkbench({ initial }: { initial: ArticleWork }) {
                 {posts.map((p) => (
                   <li key={p.id}>
                     <Link href={`/studio/posts/${p.id}`}>{p.role?.replace("_", " ")}</Link>
+                    {p.score && <span style={{ color: "var(--muted)" }}> · scores {p.score.total}{p.score.revised ? " (improved automatically)" : ""}</span>}
                     {p.planned_for && <span style={{ color: "var(--muted)" }}> · {new Date(p.planned_for).toLocaleDateString("en-GB", { weekday: "short", day: "numeric", month: "short" })}</span>}
                   </li>
                 ))}

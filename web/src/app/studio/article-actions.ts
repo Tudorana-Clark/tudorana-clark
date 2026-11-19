@@ -120,11 +120,23 @@ export async function checkAction(id: string): Promise<ActionResult<ArticleWork>
   }
 }
 
+export async function polishAction(id: string): Promise<ActionResult<ArticleWork>> {
+  await requireSession();
+  try {
+    const { work } = await studio.polish(id);
+    return { ok: true, data: work, message: "Suggestions applied to the draft. Run the check again to see the new score." };
+  } catch (err) {
+    return fail(err);
+  }
+}
+
 export async function distributeAction(id: string): Promise<ActionResult<Post[]>> {
   await requireSession();
   try {
     const posts = await studio.distribute(id);
-    return { ok: true, data: posts, message: "Five posts added to your Posts library, scheduled across two weeks." };
+    const scored = posts.filter((p) => p.score);
+    const avg = scored.length ? Math.round(scored.reduce((n, p) => n + (p.score?.total ?? 0), 0) / scored.length) : null;
+    return { ok: true, data: posts, message: `Five posts added to your Posts library, scheduled across two weeks${avg !== null ? `. Average score ${avg}` : ""}.` };
   } catch (err) {
     return fail(err);
   }

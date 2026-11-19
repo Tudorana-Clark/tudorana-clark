@@ -14,6 +14,8 @@ from azure.identity.aio import DefaultAzureCredential, get_bearer_token_provider
 from openai import APIError, APITimeoutError, AsyncAzureOpenAI
 from pydantic import BaseModel, Field
 
+from .claude_composer import ClaudeComposer
+from .copy_rubric import prompt_guidance
 from .errors import UpstreamUnavailable
 from .models import CoverBrief, PostCopy
 from .text import plain_text
@@ -72,12 +74,12 @@ class _Ideas(BaseModel):
 class _PostOut(BaseModel):
     linkedin: str = Field(
         description=(
-            "A LinkedIn post of 80-200 words. First line is a hook that stands alone. Short paragraphs of 1-3 sentences, "
-            "blank lines between them. One idea, made concrete with the author's experience or the material. "
-            "End with a takeaway or a genuine question. At most 3 relevant hashtags on the last line. No links."
+            "A LinkedIn post of 150-250 words. The first line is a hook under 80 characters that stands alone, followed by a blank line. "
+            "Short paragraphs of 1-3 sentences, blank lines between them. One idea, made concrete with the author's experience or the material. "
+            "End with the takeaway, or a genuine question only if it is one the author wants answered. At most 3 relevant hashtags on the last line. No links."
         )
     )
-    x: str = Field(description="An X post of at most 260 characters: the sharpest single version of the insight. At most one hashtag. No links.")
+    x: str = Field(description="An X post of 70-260 characters: the sharpest single version of the insight, worth replying to or sending on. At most one hashtag. No links.")
     hook: str = Field(description="At most 140 characters: one quotable line in the author's voice for a quote card. No hashtags, no quotation marks.")
 
 
@@ -121,8 +123,23 @@ def _to_copy(out: _PostOut) -> PostCopy:
     return PostCopy(linkedin=clip(out.linkedin, 3000), x=clip(out.x, 280), hook=clip(out.hook.strip().strip('"“”'), 220))
 
 
+POST_CHECKLIST = f"The drafts are scored against this evidence-based checklist, so meet every point:\nLinkedIn:\n{prompt_guidance('linkedin')}\n\nX:\n{prompt_guidance('x')}"
+
+
 class AzureStudioWriter:
-    def __init__(self, endpoint: str, deployment: str, api_version: str, timeout: float, credential: DefaultAzureCredential, site: str, author: str) -> None:
+    def __init__(
+        self,
+        endpoint: str,
+        deployment: str,
+        api_version: str,
+        timeout: float,
+        credential: DefaultAzureCredential,
+        site: str,
+        author: str,
+        composer: ClaudeComposer | None = None,
+    ) -> None:
+        # Post writing goes to Claude when configured (it decides the quality of every post); the rest stays on OpenAI.
+        self._composer = composer
         token_provider = get_bearer_token_provider(credential, "https://cognitiveservices.azure.com/.default")
         self._client = AsyncAzureOpenAI(azure_endpoint=endpoint, api_version=api_version, azure_ad_token_provider=token_provider, timeout=timeout, max_retries=2)
         self._deployment = deployment
@@ -179,16 +196,24 @@ class AzureStudioWriter:
         return [(clip(i.text, 600), clip(i.angle, 300)) for i in out.ideas[:5] if i.text.strip()]
 
     async def write_post(self, seed: str, source: str, voice: str, current: PostCopy | None, instruction: str) -> PostCopy:
-        system = f"You are {self._author}'s ghostwriter for short-form posts on LinkedIn and X. Write exactly in their voice. {_RULES}\n\nAuthor's voice:\n{voice}"
+        system = (
+            f"You are {self._author}'s ghostwriter for short-form posts on LinkedIn and X. Write exactly in their voice. {_RULES}\n\n{POST_CHECKLIST}\n\nAuthor's voice:\n{voice}"
+        )
         parts = [f"Idea to post about:\n{seed}"]
         if source:
             parts.append(f"Material from the author's own published piece (use it for specifics):\n{source}")
         if current and (current.linkedin or current.x):
             parts.append(f"Current drafts:\nLinkedIn:\n{current.linkedin}\n\nX:\n{current.x}\n\nQuote line:\n{current.hook}")
-            parts.append(f"Revise the drafts. Instruction: {instruction or 'Make them sharper and more like the author.'}")
+            parts.append(
+                f"Revise the drafts. Change only what the instruction asks; keep what already works.\nInstruction: {instruction or 'Make them sharper and more like the author.'}"
+            )
         elif instruction:
             parts.append(f"Extra direction: {instruction}")
-        out = await self._parse(system, "\n\n".join(parts), _PostOut, 0.7, "write_post")
+        user = "\n\n".join(parts)
+        if self._composer is not None:
+            out = await self._composer.parse(system, user, _PostOut, "write_post", effort="medium")
+        else:
+            out = await self._parse(system, user, _PostOut, 0.7, "write_post")
         return _to_copy(out)
 
     async def extract_sources(self, text: str) -> list[ExtractedSource]:

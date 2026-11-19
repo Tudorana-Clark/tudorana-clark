@@ -20,6 +20,7 @@ from .article_ai import ArticleWriter, AzureArticleWriter, OfflineArticleWriter
 from .articles import ArticleService
 from .claude_composer import ClaudeComposer
 from .config import Settings, get_settings
+from .copy_engine import AzureCopyJudge, CopyEngine, CopyJudge, OfflineCopyJudge
 from .covers import CoverService, ImageClient, MaiImageClient, OfflineImageClient, UnconfiguredImageClient, load_references
 from .deps import Container
 from .errors import DomainError
@@ -79,13 +80,29 @@ def build_container(settings: Settings, credential: DefaultAzureCredential | Non
         )
     else:
         ai = OfflineSeoGenerator()
+    # One Claude client, shared by post writing, scoring and article drafting (the article writer closes it).
+    composer = (
+        ClaudeComposer(settings.claude_resource, settings.claude_deployment, settings.claude_effort, settings.claude_timeout_seconds, credential)
+        if settings.claude_resource and credential is not None
+        else None
+    )
     writer: StudioWriter
+    judge: CopyJudge
     if settings.openai_endpoint and credential is not None:
         writer = AzureStudioWriter(
-            settings.openai_endpoint, settings.openai_deployment, settings.openai_api_version, settings.openai_timeout_seconds, credential, settings.site_name, settings.author_name
+            settings.openai_endpoint,
+            settings.openai_deployment,
+            settings.openai_api_version,
+            settings.openai_timeout_seconds,
+            credential,
+            settings.site_name,
+            settings.author_name,
+            composer,
         )
+        judge = AzureCopyJudge(settings.openai_endpoint, settings.openai_deployment, settings.openai_api_version, settings.openai_timeout_seconds, credential, composer)
     else:
         writer = OfflineStudioWriter()
+        judge = OfflineCopyJudge()
     article_writer: ArticleWriter
     if settings.openai_endpoint and credential is not None:
         article_writer = AzureArticleWriter(
@@ -95,9 +112,7 @@ def build_container(settings: Settings, credential: DefaultAzureCredential | Non
             settings.article_timeout_seconds,
             credential,
             settings.author_name,
-            ClaudeComposer(settings.claude_resource, settings.claude_deployment, settings.claude_effort, settings.claude_timeout_seconds, credential)
-            if settings.claude_resource
-            else None,
+            composer,
         )
     else:
         article_writer = OfflineArticleWriter()
@@ -113,7 +128,7 @@ def build_container(settings: Settings, credential: DefaultAzureCredential | Non
     key = settings.resend_api_key.get_secret_value()
     notifier: Notifier = ResendNotifier(key, settings.notify_email, settings.notify_from, settings.site_url) if key else NullNotifier()
     content = ContentService(repo, settings)
-    studio = StudioService(store, repo, writer)
+    studio = StudioService(store, repo, writer, CopyEngine(judge))
     library = LibraryService(store, writer)
     return Container(
         repo=repo,
@@ -156,6 +171,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
             await c.ai.close()
             await c.covers.images.close()
             await c.studio.writer.close()
+            await c.studio.engine.close()
             await c.studio.store.close()
             await c.articles.writer.close()
             await c.notifier.close()

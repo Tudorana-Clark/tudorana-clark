@@ -4,6 +4,7 @@ from ..deps import ContainerDep, require_admin
 from ..models import (
     ArticleWork,
     ArticleWorkIn,
+    CopyScore,
     CoverBriefRequest,
     CoverBriefs,
     DraftResult,
@@ -19,9 +20,10 @@ from ..models import (
     Playbook,
     PlaybookIn,
     Post,
-    PostCopy,
     PostIn,
+    PostScoreRequest,
     PostWriteRequest,
+    PostWriteResult,
     ResearchRequest,
     ResearchResult,
     VoiceDraft,
@@ -97,9 +99,14 @@ async def delete_post(post_id: str, c: ContainerDep) -> None:
     await c.studio.delete_post(post_id)
 
 
-@router.post("/posts/write", response_model=PostCopy)
-async def write_post(body: PostWriteRequest, c: ContainerDep) -> PostCopy:
+@router.post("/posts/write", response_model=PostWriteResult)
+async def write_post(body: PostWriteRequest, c: ContainerDep) -> PostWriteResult:
     return await c.studio.write(body)
+
+
+@router.post("/posts/score", response_model=CopyScore)
+async def score_post(body: PostScoreRequest, c: ContainerDep) -> CopyScore:
+    return await c.studio.score(body)
 
 
 # ---------- Article workbench ----------
@@ -159,6 +166,12 @@ async def draft_article(work_id: str, c: ContainerDep) -> DraftResult:
 @router.post("/articles/{work_id}/check", response_model=ArticleWork)
 async def check_article(work_id: str, c: ContainerDep) -> ArticleWork:
     return await c.articles.check(work_id)
+
+
+@router.post("/articles/{work_id}/polish", response_model=DraftResult)
+async def polish_article(work_id: str, c: ContainerDep) -> DraftResult:
+    work, content = await c.articles.polish(work_id)
+    return DraftResult(work=work, content=content)
 
 
 @router.post("/articles/{work_id}/distribute", response_model=list[Post])

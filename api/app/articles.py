@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import asyncio
 import logging
 import re
 import uuid
@@ -9,6 +10,7 @@ from datetime import UTC, timedelta
 
 from .article_ai import DEFAULT_PLAYBOOK, EVIDENCE_PLACEHOLDER, FIELD_PLACEHOLDER, ArticleWriter, normalise_url
 from .config import Settings
+from .copy_engine import fix_list
 from .errors import Conflict, DomainError, NotFound
 from .library import LibraryService
 from .models import (
@@ -207,7 +209,12 @@ class ArticleService:
         if content is None:
             raise DomainError("Draft the article first, then check it.")
         words = article_words(content.body)
-        out = await self.writer.check(content.body, work.sources, (await self.playbook()).rules, await self.studio.voice_text())
+        voice = await self.studio.voice_text()
+        # The fact-check and the copy score are independent reads of the same draft: run them together.
+        out, copy_score = await asyncio.gather(
+            self.writer.check(content.body, work.sources, (await self.playbook()).rules, voice),
+            self.studio.engine.score_article(content.title, content.body, voice),
+        )
         report = ArticleCheck(
             word_count=words,
             within_length=MIN_WORDS <= words <= MAX_WORDS,
@@ -218,8 +225,30 @@ class ArticleService:
             # Figures from the author's own field notes are experience, not unsourced claims.
             unmatched_numbers=unmatched_numbers(content.body, " ".join([work.field_notes, *(f"{x.title} {x.finding}" for x in work.sources if x.selected)])),
             verdict=out.verdict,
+            copy_score=copy_score,
         )
         return await self._save(work.model_copy(update={"check": report, "updated_at": utcnow()}))
+
+    async def polish(self, work_id: str) -> tuple[ArticleWork, Content]:
+        """Apply the copy score's suggestions to the draft, under the same integrity rules as drafting."""
+        work = await self.get(work_id)
+        content = await self._content(work)
+        if content is None:
+            raise DomainError("Draft the article first.")
+        if content.status == Status.published:
+            raise Conflict("This article is live. Edit it in the content editor instead.")
+        score = work.check.copy_score if work.check else None
+        fixes = fix_list(score, limit=8) if score else ""
+        if not fixes:
+            raise DomainError("Run the check first. There are no suggestions to apply yet.")
+        sources = [s for s in work.sources if s.selected]
+        out = await self.writer.revise(content.title, content.body, fixes, sources, (await self.playbook()).rules, await self.studio.voice_text())
+        title = work.headline or out.title
+        data = ContentIn.model_validate({**content.model_dump(include=set(ContentIn.model_fields)), "title": title, "body": out.body, "excerpt": out.excerpt or content.excerpt})
+        updated = await self.content.update(content.id, data)
+        saved = await self._save(work.model_copy(update={"check": None, "updated_at": utcnow()}))
+        log.info("article_polished", extra={"work": work.id, "before": score.total if score else None})
+        return saved, updated
 
     async def distribute(self, work_id: str) -> tuple[ArticleWork, list[Post]]:
         work = await self.get(work_id)
@@ -227,11 +256,13 @@ class ArticleService:
         if content is None:
             raise DomainError("Draft the article first, then plan its posts.")
         url = f"{self.settings.site_url.rstrip('/')}{public_path(content.kind, content.slug)}"
-        posts_copy = await self.writer.distribute(content.title, content.body, url, await self.studio.voice_text())
+        drafted = await self.writer.distribute(content.title, content.body, url, await self.studio.voice_text())
+        polished = await self.studio.polish_many(drafted, content.title, f"Title: {content.title}\n{plain_text(content.body)[:8000]}")
+        posts_copy = [(role, copy, score) for (role, _), (copy, score) in zip(drafted, polished, strict=True)]
         launch = (content.published_at or utcnow()).astimezone(UTC).replace(hour=9, minute=0, second=0, microsecond=0)
         ref = source_ref(content)
         created: list[Post] = []
-        for role, copy in posts_copy:
+        for role, copy, score in posts_copy:
             post = Post(
                 id=uuid.uuid4().hex,
                 seed=f"{content.title} — {role.replace('_', ' ')}",
@@ -242,6 +273,7 @@ class ArticleService:
                 visual=PostVisual.none if role == "link" else PostVisual.quote,
                 role=role,
                 planned_for=launch + timedelta(days=SCHEDULE.get(role, 0)),
+                score=score,
             )
             await self.store.put(post)
             created.append(post)

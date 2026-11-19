@@ -3,7 +3,7 @@ import "server-only";
 import { unstable_rethrow } from "next/navigation";
 
 import { env } from "./env";
-import type { ArticleWork, ContactMessage, ImportCandidate, LibrarySource, Content, ContentSummary, CoverBrief, CoverResult, Idea, Kind, Playbook, Post, PostCopy, SeoSuggestion, Subscriber, VoiceProfile } from "./types";
+import type { ArticleWork, ContactMessage, CopyScore, ImportCandidate, LibrarySource, Content, ContentSummary, CoverBrief, CoverResult, Idea, Kind, Playbook, Post, PostWriteResult, SeoSuggestion, Subscriber, VoiceProfile } from "./types";
 
 interface ContentList {
   items: ContentSummary[];
@@ -147,7 +147,9 @@ export const studio = {
   createPost: (input: unknown) => request<Post>(`${S}/posts`, json("POST", input)),
   updatePost: (id: string, input: unknown) => request<Post>(`${S}/posts/${encodeURIComponent(id)}`, json("PUT", input)),
   deletePost: (id: string) => request<void>(`${S}/posts/${encodeURIComponent(id)}`, { method: "DELETE", admin: true, cache: "no-store" }),
-  write: (input: unknown) => request<PostCopy>(`${S}/posts/write`, json("POST", input, 60_000)),
+  // Writing, scoring and the automatic second pass can take a couple of minutes on Claude.
+  write: (input: unknown) => request<PostWriteResult>(`${S}/posts/write`, json("POST", input, 230_000)),
+  scorePost: (input: { linkedin: string; x: string; role: string }) => request<CopyScore>(`${S}/posts/score`, json("POST", input, 120_000)),
   playbook: () => request<Playbook>(`${S}/playbook`, get),
   savePlaybook: (rules: string) => request<Playbook>(`${S}/playbook`, json("PUT", { rules })),
   articles: () => request<ArticleWork[]>(`${S}/articles`, get),
@@ -168,5 +170,6 @@ export const studio = {
   checkSource: (id: string) => request<LibrarySource>(`${S}/sources/${encodeURIComponent(id)}/check`, json("POST", {}, 30_000)),
   checkSources: () => request<LibrarySource[]>(`${S}/sources/check`, json("POST", {}, 120_000)),
   deleteSource: (id: string) => request<void>(`${S}/sources/${encodeURIComponent(id)}`, { method: "DELETE", admin: true, cache: "no-store" }),
-  distribute: (id: string) => request<Post[]>(`${S}/articles/${encodeURIComponent(id)}/distribute`, json("POST", {}, 120_000)),
+  distribute: (id: string) => request<Post[]>(`${S}/articles/${encodeURIComponent(id)}/distribute`, json("POST", {}, 230_000)),
+  polish: (id: string) => request<{ work: ArticleWork; content: Content }>(`${S}/articles/${encodeURIComponent(id)}/polish`, json("POST", {}, 230_000)),
 };

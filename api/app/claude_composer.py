@@ -35,7 +35,7 @@ class ClaudeComposer:
             max_retries=1,  # one quick retry for 429/5xx; a second would outlast the studio's wait
         )
 
-    async def parse(self, system: str, user: str, schema: type[T], what: str) -> T:
+    async def parse(self, system: str, user: str, schema: type[T], what: str, effort: Effort | None = None) -> T:
         try:
             resp = await self._client.messages.parse(
                 model=self.model,
@@ -43,7 +43,7 @@ class ClaudeComposer:
                 system=system,
                 messages=[{"role": "user", "content": user}],
                 thinking={"type": "adaptive"},
-                output_config={"effort": self._effort},
+                output_config={"effort": effort or self._effort},
                 output_format=schema,
             )
         except anthropic.APITimeoutError as exc:

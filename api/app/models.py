@@ -333,6 +333,52 @@ class MineResult(BaseModel):
     remaining: int
 
 
+# ---------- Copy score (see copy_rubric.py) ----------
+
+CopyChannel = Literal["linkedin", "x", "article"]
+ScoreBand = Literal["strong", "good", "needs_work", "weak"]
+
+
+class CriterionScore(BaseModel):
+    model_config = ConfigDict(extra="ignore")
+    id: Annotated[str, StringConstraints(max_length=40)]
+    channel: CopyChannel
+    kind: Literal["rule", "judge"]
+    label: Annotated[str, StringConstraints(max_length=120)]
+    confidence: Literal["high", "medium", "low"]
+    weight: int
+    status: Literal["pass", "warn", "fail"]
+    points: float = Field(ge=0, le=1)
+    note: Annotated[str, StringConstraints(max_length=400)] = ""
+    quote: Annotated[str, StringConstraints(max_length=400)] = ""
+    suggestion: Annotated[str, StringConstraints(max_length=400)] = ""
+    basis: Annotated[str, StringConstraints(max_length=400)] = ""
+
+
+class ChannelScore(BaseModel):
+    channel: CopyChannel
+    score: int = Field(ge=0, le=100)
+    band: ScoreBand
+
+
+class CopyScore(BaseModel):
+    """How closely a draft follows the evidence-based rubric. Not a prediction of reach."""
+
+    model_config = ConfigDict(extra="ignore")
+    total: int = Field(ge=0, le=100)
+    band: ScoreBand
+    channels: list[ChannelScore] = Field(default_factory=list, max_length=3)
+    criteria: list[CriterionScore] = Field(default_factory=list, max_length=60)
+    hook_type: Annotated[str, StringConstraints(max_length=40)] = ""
+    summary: Annotated[str, StringConstraints(max_length=400)] = ""
+    judged: bool = True  # False when the AI judgement was unavailable and only rule checks ran
+    revised: bool = False  # True when the engine rewrote the first draft to fix what it found
+    first_total: int | None = Field(default=None, ge=0, le=100)
+    fingerprint: Annotated[str, StringConstraints(max_length=64)] = ""  # hash of the scored text
+    stale: bool = False  # the text changed after scoring
+    scored_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
+
+
 class PostStatus(StrEnum):
     draft = "draft"
     ready = "ready"
@@ -360,6 +406,7 @@ class PostIn(BaseModel):
     # Set for posts generated from an article's distribution plan.
     role: Annotated[str, StringConstraints(max_length=40)] = ""
     planned_for: datetime | None = None
+    score: CopyScore | None = None
 
 
 class Post(PostIn):
@@ -385,6 +432,17 @@ class PostCopy(BaseModel):
     linkedin: Annotated[str, StringConstraints(max_length=3000)] = ""
     x: Annotated[str, StringConstraints(max_length=280)] = ""
     hook: Annotated[str, StringConstraints(max_length=260)] = ""
+
+
+class PostWriteResult(PostCopy):
+    score: CopyScore
+
+
+class PostScoreRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    linkedin: Annotated[str, StringConstraints(max_length=3000)] = ""
+    x: Annotated[str, StringConstraints(max_length=280)] = ""
+    role: Annotated[str, StringConstraints(max_length=40)] = ""
 
 
 PostWriteRequest.model_rebuild()
@@ -445,6 +503,7 @@ class ArticleCheck(BaseModel):
     # Figures in the article that appear in none of the sources: found by code, not the model.
     unmatched_numbers: list[str] = Field(default_factory=list)
     verdict: Annotated[str, StringConstraints(max_length=600)] = ""
+    copy_score: CopyScore | None = None
     checked_at: datetime = Field(default_factory=utcnow)
 
 

@@ -78,6 +78,7 @@ export default async function PostsPage() {
                         <span style={{ fontSize: 15, fontWeight: 500, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{p.hook || p.seed}</span>
                         <span style={{ fontSize: 13, color: "var(--muted)" }}>
                           {[
+                            p.score ? `Score ${p.score.total}${p.score.stale ? " (edited since)" : ""}` : "",
                             p.planned_for && p.status !== "posted" ? `Planned ${new Date(p.planned_for).toLocaleDateString("en-GB", { day: "numeric", month: "short" })}` : "",
                             p.visual === "quote" ? "Quote card" : p.visual === "image" ? "Illustration" : "",
                             p.source ? `From ${p.source.title}` : "",

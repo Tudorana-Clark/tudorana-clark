@@ -97,6 +97,15 @@ New newsletter subscribers and contact-form messages are emailed to `daniel@tudo
 - Repeat sign-ups don't trigger an email.
 - The key is send-only, stored in `.secrets/app-secrets.json` as `RESEND_API_KEY` and as a Container Apps secret. Change the recipient with `NOTIFY_EMAIL`.
 
+## Copy engine: one-shot writing with a score
+
+Posts and articles are written and scored against one evidence-based rubric (`api/app/copy_rubric.py`), built from the 2026 review "Testing beats formulas for social copy". Each criterion keeps the review's confidence rating (strong, good or limited evidence), and anything the review rated as folklore is left out.
+- **Rule checks** run in code: hook length, the 150–250 word range, links, engagement bait, announcement openers, hashtags, and for articles the headings, dated sources, figures and your field story.
+- **Judged checks** go to Claude at low effort: topic clarity, specificity, something only you could write, reply-worthiness, risk of mutes, and whether it sounds like you. Each one quotes the line it's about and suggests a concrete fix. If the judge is unavailable, the score covers the rule checks only and says so.
+- **One-shot:** the writer is given the same checklist. If a fresh draft scores below 75, or fails a strong-evidence check, it's rewritten once automatically and the better version is kept. This applies to new posts and to an article's five distribution posts.
+- **In the studio:** the post editor shows the score, what to fix first, and *Apply this fix* buttons. The article fact-check step shows a copy score with *Apply the suggestions*, which never adds figures or sources and leaves your field story alone. Editing a post marks its score out of date until you rescore it.
+- The score measures how closely the copy follows the evidence, **not predicted reach**. To change the rules, edit `copy_rubric.py`; the writer and the scorer both read it.
+
 ## Analytics and cookie consent
 
 Google Tag Manager (`GTM_ID` in `infra/site.env`) runs on public pages only, never on `/studio`. GA4 and any other tags are configured inside the GTM container.

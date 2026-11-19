@@ -197,6 +197,41 @@ export interface Idea {
   created_at: string;
 }
 
+// ---------- Copy score (API: copy_rubric.py / copy_engine.py) ----------
+
+export type CopyChannel = "linkedin" | "x" | "article";
+export type ScoreBand = "strong" | "good" | "needs_work" | "weak";
+
+export interface CriterionScore {
+  id: string;
+  channel: CopyChannel;
+  kind: "rule" | "judge";
+  label: string;
+  confidence: "high" | "medium" | "low";
+  weight: number;
+  status: "pass" | "warn" | "fail";
+  points: number;
+  note: string;
+  quote: string;
+  suggestion: string;
+  basis: string;
+}
+
+export interface CopyScore {
+  total: number;
+  band: ScoreBand;
+  channels: { channel: CopyChannel; score: number; band: ScoreBand }[];
+  criteria: CriterionScore[];
+  hook_type: string;
+  summary: string;
+  judged: boolean;
+  revised: boolean;
+  first_total: number | null;
+  fingerprint: string;
+  stale: boolean;
+  scored_at: string;
+}
+
 export type PostStatus = "draft" | "ready" | "posted";
 export type PostVisual = "none" | "quote" | "image";
 
@@ -216,6 +251,11 @@ export interface PostInput extends PostCopy {
   status: PostStatus;
   role?: string;
   planned_for?: string | null;
+  score?: CopyScore | null;
+}
+
+export interface PostWriteResult extends PostCopy {
+  score: CopyScore;
 }
 
 export interface Post extends PostInput {
@@ -272,6 +312,7 @@ export interface ArticleCheck {
   has_field_story: boolean;
   unmatched_numbers: string[];
   verdict: string;
+  copy_score: CopyScore | null;
   checked_at: string;
 }
 

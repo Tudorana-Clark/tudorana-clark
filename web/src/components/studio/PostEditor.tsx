@@ -3,11 +3,12 @@
 import { useRouter } from "next/navigation";
 import { useEffect, useId, useState, useTransition } from "react";
 
-import { deletePostAction, savePostAction, writePostAction } from "@/app/studio/studio-actions";
-import type { Post, PostInput, PostStatus, PostVisual } from "@/lib/types";
+import { deletePostAction, savePostAction, scorePostAction, writePostAction } from "@/app/studio/studio-actions";
+import type { CriterionScore, Post, PostInput, PostStatus, PostVisual } from "@/lib/types";
 
 import { CoverGenerator } from "./CoverGenerator";
 import { Panel, TextField } from "./fields";
+import { ScorePanel } from "./ScorePanel";
 
 type Toast = { tone: "success" | "error"; text: string } | null;
 
@@ -24,8 +25,8 @@ const VISUALS: { key: PostVisual; label: string }[] = [
 ];
 
 function toInput(p: Post): PostInput {
-  const { seed, source, idea_id, linkedin, x, hook, visual, image, cover, status, role, planned_for } = p;
-  return { seed, source, idea_id, linkedin, x, hook, visual, image, cover, status, role: role ?? "", planned_for: planned_for ?? null };
+  const { seed, source, idea_id, linkedin, x, hook, visual, image, cover, status, role, planned_for, score } = p;
+  return { seed, source, idea_id, linkedin, x, hook, visual, image, cover, status, role: role ?? "", planned_for: planned_for ?? null, score: score ?? null };
 }
 
 function useDebounced<T>(value: T, ms: number): T {
@@ -47,17 +48,23 @@ export function PostEditor({ initial }: { initial: Post | PostInput }) {
   const [toast, setToast] = useState<Toast>(null);
   const [errorField, setErrorField] = useState<string | null>(null);
   const [writing, setWriting] = useState(false);
+  const [scoring, setScoring] = useState(false);
   const [instruction, setInstruction] = useState("");
   const [format, setFormat] = useState<"square" | "landscape">("square");
   const [tone, setTone] = useState<"light" | "dark">("light");
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [pending, startTransition] = useTransition();
   const seedId = useId();
-  const busy = pending || writing;
+  const busy = pending || writing || scoring;
   const hasDrafts = Boolean(form.linkedin.trim() || form.x.trim());
 
   function update<K extends keyof PostInput>(key: K, value: PostInput[K]) {
-    setForm((f) => ({ ...f, [key]: value }));
+    setForm((f) => {
+      const next = { ...f, [key]: value };
+      // Editing the copy makes the score out of date; the API also checks this when saving.
+      if ((key === "linkedin" || key === "x") && f.score && !f.score.stale) next.score = { ...f.score, stale: true };
+      return next;
+    });
     setDirty(true);
   }
 
@@ -84,7 +91,8 @@ export function PostEditor({ initial }: { initial: Post | PostInput }) {
         instruction: refine ?? "",
       });
       if (!res.ok) return setToast({ tone: "error", text: res.error });
-      setForm((f) => ({ ...f, ...res.data }));
+      const { linkedin, x, hook, score } = res.data;
+      setForm((f) => ({ ...f, linkedin, x, hook, score }));
       setDirty(true);
       setInstruction("");
       setToast({ tone: "success", text: res.message ?? "Done." });
@@ -93,6 +101,26 @@ export function PostEditor({ initial }: { initial: Post | PostInput }) {
     } finally {
       setWriting(false);
     }
+  }
+
+  async function rescore() {
+    setScoring(true);
+    try {
+      const res = await scorePostAction({ linkedin: form.linkedin, x: form.x, role: form.role ?? "" });
+      if (!res.ok) return setToast({ tone: "error", text: res.error });
+      setForm((f) => ({ ...f, score: res.data }));
+      setDirty(true);
+      setToast({ tone: "success", text: res.message ?? "Scored." });
+    } catch {
+      setToast({ tone: "error", text: "We couldn’t reach the studio server. Check your connection and try again." });
+    } finally {
+      setScoring(false);
+    }
+  }
+
+  function applyFix(c: CriterionScore) {
+    const where = c.channel === "x" ? "In the X post: " : c.channel === "linkedin" ? "In the LinkedIn post: " : "";
+    void write(`${where}${c.suggestion}`.slice(0, 300));
   }
 
   function save(status?: PostStatus) {
@@ -140,7 +168,7 @@ export function PostEditor({ initial }: { initial: Post | PostInput }) {
         </div>
         <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
           <span style={{ fontSize: 13, color: "var(--muted)" }} aria-live="polite">
-            {pending ? "Saving…" : writing ? "Writing in your voice…" : dirty ? "Unsaved changes" : doc ? "All changes saved" : "New post"}
+            {pending ? "Saving…" : writing ? "Writing, scoring and polishing…" : scoring ? "Scoring…" : dirty ? "Unsaved changes" : doc ? "All changes saved" : "New post"}
           </span>
           <button type="button" className="pill sm" onClick={() => save()} disabled={busy || (!dirty && !!doc) || !form.seed.trim()}>
             Save
@@ -148,7 +176,7 @@ export function PostEditor({ initial }: { initial: Post | PostInput }) {
         </div>
       </div>
 
-      <div className="split" style={{ gridTemplateColumns: "minmax(0, 7fr) minmax(320px, 5fr)", gap: 24, alignItems: "start" }}>
+      <div className="split post-editor-grid">
         <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
           <Panel title="Idea">
             <div className="field">
@@ -238,7 +266,18 @@ export function PostEditor({ initial }: { initial: Post | PostInput }) {
           </Panel>
         </div>
 
-        <aside style={{ display: "flex", flexDirection: "column", gap: 16, position: "sticky", top: 72 }}>
+        <aside style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+          <Panel title="Score">
+            <ScorePanel
+              score={form.score}
+              scoring={scoring || writing}
+              onRescore={hasDrafts ? () => void rescore() : undefined}
+              onApply={applyFix}
+              disabled={busy}
+              emptyText={hasDrafts ? "These drafts haven’t been scored yet." : "Write drafts to see how they score against the evidence, with fixes you can apply in one click."}
+            />
+          </Panel>
+
           <Panel title="Thumbnail">
             <div role="radiogroup" aria-label="Thumbnail type" style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
               {VISUALS.map((v) => (

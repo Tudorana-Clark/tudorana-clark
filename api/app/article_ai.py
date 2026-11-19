@@ -19,9 +19,11 @@ from openai import APIError, APITimeoutError, AsyncAzureOpenAI, AsyncOpenAI
 from pydantic import BaseModel, Field
 
 from .claude_composer import ClaudeComposer
+from .copy_rubric import prompt_guidance
 from .errors import UpstreamUnavailable
 from .models import ArticleSource, ClaimCheck, OutlineSection, PostCopy
 from .studio_ai import clip
+from .text import plain_text
 
 log = logging.getLogger(__name__)
 T = TypeVar("T", bound=BaseModel)
@@ -133,8 +135,8 @@ class _Check(BaseModel):
 
 class _Post(BaseModel):
     role: Literal["headline_stat", "contrarian", "tip", "question", "link"]
-    linkedin: str = Field(description="LinkedIn post, 60-180 words, hook first line, short paragraphs, at most 3 hashtags on the last line.")
-    x: str = Field(description="X post, at most 250 characters.")
+    linkedin: str = Field(description="LinkedIn post, 150-250 words. A hook under 80 characters on its own line, short paragraphs, at most 3 hashtags on the last line.")
+    x: str = Field(description="X post, 70-250 characters: the sharpest single version of the point.")
     hook: str = Field(description="At most 140 characters: one quotable line for a quote card.")
 
 
@@ -171,6 +173,7 @@ class ArticleWriter(Protocol):
     async def draft(self, brief: str, playbook: str, voice: str, sources: list[ArticleSource], field_notes: str) -> DraftOut: ...
     async def check(self, body: str, sources: list[ArticleSource], playbook: str, voice: str) -> CheckOut: ...
     async def distribute(self, title: str, body: str, url: str, voice: str) -> list[tuple[str, PostCopy]]: ...
+    async def revise(self, title: str, body: str, fixes: str, sources: list[ArticleSource], playbook: str, voice: str) -> DraftOut: ...
     async def close(self) -> None: ...
 
 
@@ -329,10 +332,25 @@ class AzureArticleWriter:
             "Label sponsored research as the playbook says. Any claim without a source must read as the author's own experience or view. "
             "Use Markdown: '## ' headings (short), bold for key lines and statistics, a numbered list for the insight, a small table for the evidence where the data allows. "
             "End with '## Sources' listing every source used as: Publisher (sponsor if any), Title, Month Year, URL."
+            f"\n\nThe draft is scored against this evidence-based checklist; meet every point the facts allow:\n{prompt_guidance('article')}"
             f"\n\n{today_line()}\n\nPlaybook:\n{playbook}\n\nAuthor's voice:\n{voice}"
         )
         user = f"{brief}\n\nSources the author approved:\n{_sources_block(sources)}\n\n{field}"
         out = await self._compose(system, user, _Draft, 0.5, "draft")
+        return DraftOut(title=clip(out.title, 200), excerpt=clip(out.excerpt, 400), body=out.body.strip()[:200_000])
+
+    async def revise(self, title: str, body: str, fixes: str, sources: list[ArticleSource], playbook: str, voice: str) -> DraftOut:
+        system = (
+            f"You are {self._author}'s editor. Revise the article to address the fixes listed, and change nothing else. "
+            "Integrity rules: never add a figure, statistic, quote, source, client, result or anecdote that is not already in the draft or the sources list. "
+            "Keep every figure exactly as written. Keep the 'From the field' section's facts exactly as they are, and keep any placeholder in bold brackets untouched. "
+            "Keep the '## Sources' list. Stay within 700 to 880 words before the Sources list. "
+            "If a fix needs facts you don't have, leave that point as it is."
+            f"\n\nChecklist the article is scored against:\n{prompt_guidance('article')}"
+            f"\n\nPlaybook:\n{playbook}\n\nAuthor's voice:\n{voice}"
+        )
+        user = f"Fixes:\n{fixes}\n\nSources the author approved:\n{_sources_block(sources)}\n\nCurrent title: {title}\n\nCurrent article:\n{body[:30000]}"
+        out = await self._compose(system, user, _Draft, 0.3, "revise")
         return DraftOut(title=clip(out.title, 200), excerpt=clip(out.excerpt, 400), body=out.body.strip()[:200_000])
 
     async def check(self, body: str, sources: list[ArticleSource], playbook: str, voice: str) -> CheckOut:
@@ -359,7 +377,9 @@ class AzureArticleWriter:
             f"You turn {self._author}'s article into five short posts, each standalone and in their voice: "
             "headline_stat (lead with the article's strongest sourced statistic and name the source), contrarian (the sharpest counter-intuitive line), "
             "tip (one practical step), question (a genuine question to the audience), link (introduces the article and ends with the URL). "
-            f"Only the link post contains the URL. Use figures exactly as written in the article.\n\nAuthor's voice:\n{voice}"
+            "Only the link post contains the URL. Use figures exactly as written in the article.\n\n"
+            f"Every post is scored against this evidence-based checklist (the link post is exempt from the no-link rule):\n"
+            f"LinkedIn:\n{prompt_guidance('linkedin')}\n\nX:\n{prompt_guidance('x')}\n\nAuthor's voice:\n{voice}"
         )
         user = f"Title: {title}\nURL: {url}\n\n{body[:20000]}"
         out = await self._parse(system, user, _Posts, 0.7, "distribute")
@@ -412,6 +432,9 @@ class OfflineArticleWriter:
 
     async def check(self, body: str, sources: list[ArticleSource], playbook: str, voice: str) -> CheckOut:
         return CheckOut(claims=[], voice_issues=[], guardrail_issues=[], has_field_story=FIELD_PLACEHOLDER not in body, verdict="Offline check: review figures by hand.")
+
+    async def revise(self, title: str, body: str, fixes: str, sources: list[ArticleSource], playbook: str, voice: str) -> DraftOut:
+        return DraftOut(title=title, excerpt=clip(plain_text(body), 200), body=body.replace("## Opening", "## The short answer", 1))
 
     async def distribute(self, title: str, body: str, url: str, voice: str) -> list[tuple[str, PostCopy]]:
         roles = ["headline_stat", "contrarian", "tip", "question", "link"]

@@ -4,7 +4,7 @@ import { z } from "zod";
 
 import { fail, requireSession } from "@/lib/action-helpers";
 import { studio } from "@/lib/api";
-import type { ActionResult, CoverBrief, Idea, Post, PostCopy, VoiceProfile } from "@/lib/types";
+import type { ActionResult, CopyScore, CoverBrief, Idea, Post, PostWriteResult, VoiceProfile } from "@/lib/types";
 
 const KIND = z.enum(["article", "research", "note", "talk", "video"]);
 
@@ -105,6 +105,8 @@ const postSchema = copySchema.extend({
   status: z.enum(["draft", "ready", "posted"]),
   role: z.string().max(40).optional(),
   planned_for: z.string().nullish(),
+  // Produced by the API and passed back untouched; the API validates its shape and marks it stale after edits.
+  score: z.custom<CopyScore>((v) => typeof v === "object" && v !== null && "total" in v).nullish(),
 });
 
 export async function savePostAction(id: string | null, input: z.input<typeof postSchema>): Promise<ActionResult<Post>> {
@@ -140,13 +142,33 @@ const writeSchema = z.object({
   instruction: z.string().trim().max(300, "Keep the instruction short."),
 });
 
-export async function writePostAction(input: z.input<typeof writeSchema>): Promise<ActionResult<PostCopy>> {
+export async function writePostAction(input: z.input<typeof writeSchema>): Promise<ActionResult<PostWriteResult>> {
   await requireSession();
   const parsed = writeSchema.safeParse(input);
   if (!parsed.success) return { ok: false, error: parsed.error.issues[0]?.message ?? "Check the idea." };
   try {
     const data = await studio.write(parsed.data);
-    return { ok: true, data, message: parsed.data.current ? "Revised. Review it before posting." : "Drafts written in your voice. Edit freely." };
+    const { score } = data;
+    const message = parsed.data.current
+      ? `Revised. It now scores ${score.total}.`
+      : score.revised && score.first_total !== null
+        ? `Drafts written and improved from ${score.first_total} to ${score.total}. Review before posting.`
+        : `Drafts written in your voice. They score ${score.total}.`;
+    return { ok: true, data, message };
+  } catch (err) {
+    return fail(err);
+  }
+}
+
+const scoreSchema = z.object({ linkedin: z.string().max(3000), x: z.string().max(280), role: z.string().max(40) });
+
+export async function scorePostAction(input: z.input<typeof scoreSchema>): Promise<ActionResult<CopyScore>> {
+  await requireSession();
+  const parsed = scoreSchema.safeParse(input);
+  if (!parsed.success) return { ok: false, error: "Check the drafts." };
+  try {
+    const data = await studio.scorePost(parsed.data);
+    return { ok: true, data, message: `Scored ${data.total}.` };
   } catch (err) {
     return fail(err);
   }
