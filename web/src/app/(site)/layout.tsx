@@ -4,6 +4,7 @@ import { SiteHeader } from "@/components/SiteHeader";
 import { TagManager } from "@/components/TagManager";
 import { JsonLd } from "@/components/ui";
 import { personNode, websiteNode } from "@/lib/jsonld";
+import { site } from "@/lib/site";
 
 export default function SiteLayout({ children }: { children: React.ReactNode }) {
   return (
@@ -16,7 +17,7 @@ export default function SiteLayout({ children }: { children: React.ReactNode }) 
       <main id="main">{children}</main>
       <Newsletter />
       <SiteFooter />
-      <TagManager />
+      <TagManager gtmId={site.gtmId} />
     </>
   );
 }

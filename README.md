@@ -97,6 +97,13 @@ New newsletter subscribers and contact-form messages are emailed to `daniel@tudo
 - Repeat sign-ups don't trigger an email.
 - The key is send-only, stored in `.secrets/app-secrets.json` as `RESEND_API_KEY` and as a Container Apps secret. Change the recipient with `NOTIFY_EMAIL`.
 
+## Analytics and cookie consent
+
+Google Tag Manager (`GTM_ID` in `infra/site.env`) runs on public pages only, never on `/studio`. GA4 and any other tags are configured inside the GTM container.
+- Nothing loads until a visitor presses **Accept analytics** in the banner. Before that, the site makes no request to Google.
+- The choice is stored in the visitor's browser (`localStorage`), and **Cookie settings** in the footer reopens the banner. Rejecting after accepting tells Google that consent is withdrawn and deletes the `_ga` cookies.
+- Advertising storage is always denied (Consent Mode v2). The code is in `web/src/components/TagManager.tsx` and `web/src/lib/consent.ts`.
+
 ## Content model
 
 `article`, `note` → `/<slug>` (as on Ghost; `/writing/<slug>` permanently redirects) · `research` → `/research/<slug>` · `talk`, `video` → `/speaking/<slug>`. The `/writing` index page stays.

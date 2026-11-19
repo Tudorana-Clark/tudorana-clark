@@ -2,6 +2,7 @@ import Link from "next/link";
 
 import { site } from "@/lib/site";
 
+import { CookieSettingsButton } from "./CookieSettingsButton";
 import { Logo } from "./Logo";
 
 export function SiteFooter() {
@@ -25,7 +26,10 @@ export function SiteFooter() {
         </div>
         <div style={{ display: "flex", justifyContent: "space-between", gap: 16, flexWrap: "wrap", fontSize: 13, color: "var(--muted)", borderTop: "1px solid var(--line)", paddingTop: 24 }}>
           <span>© Tudorana Clark</span>
-          <span>tudoranaclark.com</span>
+          <span style={{ display: "flex", gap: 24, flexWrap: "wrap" }}>
+            {site.gtmId && <CookieSettingsButton />}
+            <span>tudoranaclark.com</span>
+          </span>
         </div>
       </div>
     </footer>
