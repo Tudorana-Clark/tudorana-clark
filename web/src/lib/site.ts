@@ -22,6 +22,8 @@ export const site = {
     stage: process.env.NEXT_PUBLIC_STAGE_PHOTO_URL || null,
   },
   partners: ["Microsoft", "Lenovo", "Sage", "Adobe"],
+  /** Google Tag Manager container. Ignored unless it looks like a real container id. */
+  gtmId: /^GTM-[A-Z0-9]{4,12}$/.test(process.env.NEXT_PUBLIC_GTM_ID ?? "") ? (process.env.NEXT_PUBLIC_GTM_ID as string) : null,
 } as const;
 
 export function absoluteUrl(path: string): string {

@@ -82,7 +82,8 @@ if [[ $TARGET == all || $TARGET == web ]]; then
   build web ./web \
     --build-arg "NEXT_PUBLIC_SITE_URL=$SITE_URL" \
     --build-arg "NEXT_PUBLIC_PORTRAIT_URL=${PORTRAIT_URL:-}" \
-    --build-arg "NEXT_PUBLIC_STAGE_PHOTO_URL=${STAGE_PHOTO_URL:-}"
+    --build-arg "NEXT_PUBLIC_STAGE_PHOTO_URL=${STAGE_PHOTO_URL:-}" \
+    --build-arg "NEXT_PUBLIC_GTM_ID=${GTM_ID:-}"
   echo "› Deploying $WEB_APP (public, scale-to-zero)"
   args=()
   if [[ $MODE == full ]]; then

@@ -1,6 +1,7 @@
 import { Newsletter } from "@/components/Newsletter";
 import { SiteFooter } from "@/components/SiteFooter";
 import { SiteHeader } from "@/components/SiteHeader";
+import { TagManager } from "@/components/TagManager";
 import { JsonLd } from "@/components/ui";
 import { personNode, websiteNode } from "@/lib/jsonld";
 
@@ -15,6 +16,7 @@ export default function SiteLayout({ children }: { children: React.ReactNode }) 
       <main id="main">{children}</main>
       <Newsletter />
       <SiteFooter />
+      <TagManager />
     </>
   );
 }
