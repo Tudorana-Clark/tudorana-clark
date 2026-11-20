@@ -75,7 +75,7 @@ class _Ideas(BaseModel):
 class _PostOut(BaseModel):
     linkedin: str = Field(
         description=(
-            "A LinkedIn post of 150-250 words. The first line is a hook under 80 characters that stands alone, followed by a blank line. "
+            "A LinkedIn post of 150-400 words. The first line is a hook under 80 characters that stands alone, followed by a blank line. "
             "Short paragraphs of 1-3 sentences, blank lines between them. One idea, made concrete with the author's experience or the material. "
             "End with the takeaway, or a genuine question only if it is one the author wants answered. At most 3 relevant hashtags on the last line. No links."
         )

@@ -249,7 +249,7 @@ class CopyEngine:
         if linkedin.strip():
             drafts["linkedin"], rules["linkedin"] = linkedin, check_linkedin(linkedin, role)
         if x.strip():
-            drafts["x"], rules["x"] = x, check_x(x, role)
+            drafts["x"], rules["x"] = x, check_x(x, role, linkedin)
         if not drafts:
             raise DomainError("Write a LinkedIn or X draft first, then score it.")
         return await self._assemble(drafts, rules, voice, post_fingerprint(linkedin, x))

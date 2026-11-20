@@ -28,7 +28,7 @@ class _Faq(BaseModel):
 class _Social(BaseModel):
     linkedin: str = Field(
         description=(
-            "Written as the author's own first-person post. 150-250 words. A hook under 80 characters on its own line, short paragraphs, "
+            "Written as the author's own first-person post. 150-400 words. A hook under 80 characters on its own line, short paragraphs, "
             "end with the takeaway or a genuine question, at most 3 hashtags on the last line. No link; it is added separately."
         )
     )

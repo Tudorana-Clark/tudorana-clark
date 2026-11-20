@@ -136,7 +136,7 @@ class _Check(BaseModel):
 
 class _Post(BaseModel):
     role: Literal["headline_stat", "contrarian", "tip", "question", "link"]
-    linkedin: str = Field(description="LinkedIn post, 150-250 words. A hook under 80 characters on its own line, short paragraphs, at most 3 hashtags on the last line.")
+    linkedin: str = Field(description="LinkedIn post, 150-400 words. A hook under 80 characters on its own line, short paragraphs, at most 3 hashtags on the last line.")
     x: str = Field(description="X post, 70-250 characters: the sharpest single version of the point.")
     hook: str = Field(description="At most 140 characters: one quotable line for a quote card.")
 

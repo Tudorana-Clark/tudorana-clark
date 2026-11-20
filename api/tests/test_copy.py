@@ -206,3 +206,36 @@ async def test_fix_list_limit_widens_the_brief() -> None:
     open_items = [c for c in weak.criteria if c.status != "pass" and c.suggestion]
     assert fix_list(weak, limit=12).count("\n- ") == min(len(open_items), 12)
     assert fix_list(weak).count("\n- ") == min(len(open_items), 6)
+
+
+# ---------- 2026 strategy report refinements ----------
+
+
+def test_linkedin_length_passes_longer_first_hand_posts() -> None:
+    para = "Last month a client with 40 staff asked me for a chatbot, and two weeks in we found three copies of their customer list."
+    assert by_id(check_linkedin("Fix the data first.\n\n" + "\n\n".join([para] * 14)))["li_length"].status == "pass"  # ~330 words
+    assert by_id(check_linkedin("Fix the data first.\n\n" + "\n\n".join([para] * 20)))["li_length"].status == "warn"  # ~470 words
+
+
+def test_stock_openers_fail_like_announcements() -> None:
+    for opener in ("In today's rapidly evolving landscape, AI matters.", "Let's dive into agentic AI.", "In an era of AI, data wins."):
+        assert by_id(check_linkedin(f"{opener}\n\n{GOOD_LINKEDIN}"))["li_no_announce"].status == "fail", opener
+    assert by_id(check_linkedin(GOOD_LINKEDIN))["li_no_announce"].status == "pass"
+
+
+def test_x_article_links_are_not_penalised() -> None:
+    assert by_id(check_x("I wrote up how we unified 50 offices' data before any AI. https://x.com/tudoranaclark/article/123"))["x_no_link"].status == "pass"
+    assert by_id(check_x("I wrote up how we unified 50 offices' data before any AI. https://tudoranaclark.com/a"))["x_no_link"].status == "fail"
+
+
+def test_x_post_copied_from_linkedin_is_flagged() -> None:
+    lifted = "Last month a client with 40 staff asked me for a chatbot. Two weeks in, we found three copies of their customer list."
+    assert by_id(check_x(lifted, linkedin=GOOD_LINKEDIN))["x_not_copy"].status == "fail"
+    fresh = "Your chatbot problem is a customer-list problem. Three copies, none right: fix that and the bot takes four days."
+    assert by_id(check_x(fresh, linkedin=GOOD_LINKEDIN))["x_not_copy"].status == "pass"
+    assert "x_not_copy" not in by_id(check_x(fresh))  # nothing to compare against
+
+
+def test_new_judged_criteria_reach_the_judge_and_writer() -> None:
+    assert {"saveable", "x_bookmark"} <= {c.id for c in CRITERIA if c.kind == "judge"}
+    assert "framework" in prompt_guidance("linkedin") and "Never cut down the LinkedIn post" in prompt_guidance("x")

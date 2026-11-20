@@ -1,7 +1,8 @@
 """The copy rubric: one list of criteria that both the writers and the scorer use.
 
-Every criterion comes from the "Testing beats formulas for social copy" evidence review (2026) and keeps that
-review's confidence rating, so the score weighs well-evidenced advice above vendor lore. Anything the review
+Criteria come from the "Testing beats formulas for social copy" evidence review (2026), refined by the
+"2026 Executive Content and Lead-Generation Strategy" report, and keep a confidence rating, so the score weighs
+well-evidenced advice above vendor lore. Anything the review
 rated as folklore (question hooks as a default, AIDA/PAS, posting times, hashtag tricks) is deliberately absent.
 
 Two kinds of criterion:
@@ -63,11 +64,11 @@ CRITERIA: tuple[Criterion, ...] = (
         "li_length",
         "linkedin",
         "rule",
-        "Length 150-250 words",
+        "Length 150-400 words",
         2,
         "medium",
-        "Write 150-250 words in short paragraphs of one to three sentences. Go longer only when the idea earns it.",
-        "Reach peaked at 150-174 words across 167,940 posts; engagement rose slightly above 250.",
+        "Write 150-400 words in short paragraphs of one to three sentences. Use the longer end (about 1,300-2,500 characters) when there's a first-hand story to tell.",
+        "Reach peaked at 150-174 words (167,940 posts); engagement ran about 27% higher at 1,301-2,500 characters (AuthoredUp, 372,126 posts).",
     ),
     Criterion(
         "li_paragraphs",
@@ -103,11 +104,11 @@ CRITERIA: tuple[Criterion, ...] = (
         "li_no_announce",
         "linkedin",
         "rule",
-        "No announcement opener",
+        "No announcement or stock opener",
         2,
         "medium",
-        "Never open with 'excited to announce', 'thrilled to share' or similar.",
-        "Announcements sit at the bottom of the hook-type data.",
+        "Never open with 'excited to announce', 'in today's rapidly evolving landscape', 'let's dive in' or similar stock lines.",
+        "Announcements sit at the bottom of the hook-type data; generic, AI-sounding posts fell to 28% below average reach in 2026.",
     ),
     Criterion(
         "li_not_question_hook",
@@ -147,8 +148,18 @@ CRITERIA: tuple[Criterion, ...] = (
         "No link in the post",
         2,
         "medium",
-        "Keep links out of the post.",
-        "Link posts from regular accounts fell to 0% median engagement after March 2025 (Buffer, 18.8M posts).",
+        "Keep links out of the post. A link to your own X Article is fine.",
+        "Link posts from regular accounts fell to 0% median engagement after March 2025 (Buffer, 18.8M posts); links within X carry no such drag.",
+    ),
+    Criterion(
+        "x_not_copy",
+        "x",
+        "rule",
+        "Written for X, not copied from LinkedIn",
+        2,
+        "medium",
+        "Write the X post fresh: LinkedIn speaks to buyers' risk and return, X to builders' speed and the thesis. Never cut down the LinkedIn post.",
+        "Practitioner guidance across 2026 platform studies: never cross-post identical copy, because each feed rewards a different reader.",
     ),
     Criterion(
         "x_length",
@@ -230,8 +241,8 @@ CRITERIA: tuple[Criterion, ...] = (
         "Leads with a story, position or result",
         3,
         "medium",
-        "Lead with a short story, a clear position or a concrete result.",
-        "Story and contrarian hooks topped the largest LinkedIn hook dataset.",
+        "Lead with a short story, a clear position or a concrete result. Challenging one common assumption is a strong way in.",
+        "Story and contrarian hooks topped the largest LinkedIn hook dataset; 86% of B2B buyers say they want assumptions challenged (survey).",
     ),
     Criterion(
         "specific",
@@ -264,6 +275,16 @@ CRITERIA: tuple[Criterion, ...] = (
         "Comments and shares, not likes, drive both feeds' ranking.",
     ),
     Criterion(
+        "saveable",
+        "linkedin",
+        "judge",
+        "Worth saving",
+        2,
+        "medium",
+        "Give people something to keep: a framework, checklist, decision rule or number they'll want to find again.",
+        "Saves are estimated at 5-10 times the weight of a like (van der Blom, 1.3M+ posts, 2026).",
+    ),
+    Criterion(
         "human",
         "linkedin",
         "judge",
@@ -292,6 +313,16 @@ CRITERIA: tuple[Criterion, ...] = (
         "medium",
         "Write the sharpest single version of the idea: something people would reply to, quote or send on.",
         "X's published weights: share 20, reply and quote 5, like 0.5.",
+    ),
+    Criterion(
+        "x_bookmark",
+        "x",
+        "judge",
+        "Worth bookmarking",
+        1,
+        "low",
+        "Make it worth coming back to: a specific number, rule of thumb or architecture choice someone would bookmark.",
+        "Reported as a ranking signal after X's January 2026 ranking rewrite; from vendor analyses, not yet independently checked.",
     ),
     Criterion(
         "x_mute_risk",
@@ -410,6 +441,15 @@ _ANNOUNCE = re.compile(
     r"(excited|thrilled|delighted|pleased|proud|happy)\s+to\s+(announce|share|say|introduce|launch)",
     re.I,
 )
+# Stock openers that read as generated filler. Matched at the start of the first line only.
+_STOCK_OPENER = re.compile(
+    r"^\W*(in\s+today['’]?s\b|in\s+(an?|this|the)\s+(era|age|world)\s+(of|where)\b|in\s+the\s+(ever|rapidly|fast)[-\s]|"
+    r"let['’]?s\s+(dive|talk|unpack|break)|here['’]?s\s+the\s+thing\b|buckle\s+up\b|unlock(ing)?\s+the\s+(power|potential)\b|"
+    r"(ai|it)\s+is\s+(changing|transforming|revolutioni[sz]ing)\s+(everything|the\s+world)\b)",
+    re.I,
+)
+# Links to X's own pages (X Articles), which X doesn't penalise the way it does outbound links.
+_X_INTERNAL = re.compile(r"^(https?://)?(www\.)?(x|twitter)\.com/(\w+|i)/articles?/\w+", re.I)
 _PLACEHOLDER = re.compile(r"\*\*\[(From the field|Evidence needed)", re.I)
 _FIGURE = re.compile(r"(?<![\w.])(?:£|\$|€)?\d[\d,]*(?:\.\d+)?\s?(?:%|per\s?cent|percent|bn|billion|m\b|million|x\b)?", re.I)
 _YEAR = re.compile(r"\b(19|20)\d{2}\b")
@@ -466,14 +506,14 @@ def check_linkedin(text: str, role: str = "") -> list[RuleResult]:
     )
 
     w = _words(t)
-    if 150 <= w <= 250:
+    if 150 <= w <= 400:
         out.append(RuleResult("li_length", "pass", f"{w} words."))
-    elif 100 <= w < 150 or 250 < w <= 350:
-        tip = "Add one concrete detail or example." if w < 150 else "Trim to about 250 words unless every line earns its place."
-        out.append(RuleResult("li_length", "warn", f"{w} words; 150-250 is the sweet spot.", tip))
+    elif 100 <= w < 150 or 400 < w <= 500:
+        tip = "Add one concrete detail or example." if w < 150 else "Trim to about 400 words unless every line earns its place."
+        out.append(RuleResult("li_length", "warn", f"{w} words; 150-400 works best.", tip))
     else:
-        tip = "Develop the idea with one concrete example to reach about 150 words." if w < 100 else "Cut to 150-250 words, or turn this into an article."
-        out.append(RuleResult("li_length", "fail", f"{w} words; 150-250 is the sweet spot.", tip))
+        tip = "Develop the idea with one concrete example to reach about 150 words." if w < 100 else "Cut to 150-400 words, or turn this into an article."
+        out.append(RuleResult("li_length", "fail", f"{w} words; 150-400 works best.", tip))
 
     paras = [p for p in re.split(r"\n\s*\n", t) if p.strip()]
     longest = max((_words(p) for p in paras), default=0)
@@ -514,11 +554,14 @@ def check_linkedin(text: str, role: str = "") -> list[RuleResult]:
             RuleResult("li_no_link", "fail", "A link in the post body reduces reach.", "Remove the link; point to your profile or the newsletter instead.", _short(link.group(0)))
         )
 
-    out.append(
-        RuleResult("li_no_announce", "fail", "Opens like an announcement.", "Open with the result, the story or your position instead.", _short(first))
-        if _ANNOUNCE.search(first)
-        else RuleResult("li_no_announce", "pass", "Doesn't open like an announcement.")
-    )
+    if _ANNOUNCE.search(first):
+        out.append(RuleResult("li_no_announce", "fail", "Opens like an announcement.", "Open with the result, the story or your position instead.", _short(first)))
+    elif _STOCK_OPENER.search(first):
+        out.append(
+            RuleResult("li_no_announce", "fail", "Opens with a stock line that reads as generated.", "Open with the result, the story or your position instead.", _short(first))
+        )
+    else:
+        out.append(RuleResult("li_no_announce", "pass", "Opens without an announcement or stock line."))
     out.append(
         RuleResult("li_not_question_hook", "warn", "Opens with a question.", "Turn the question into the answer or a clear position.", _short(first))
         if first.endswith("?")
@@ -533,7 +576,18 @@ def check_linkedin(text: str, role: str = "") -> list[RuleResult]:
     return out
 
 
-def check_x(text: str, role: str = "") -> list[RuleResult]:
+def _overlap(a: str, b: str) -> float:
+    """Share of `a`'s three-word runs that also appear in `b`: near 1 means `a` was lifted from `b`."""
+
+    def runs(t: str) -> set[tuple[str, ...]]:
+        w = [x.lower() for x in re.findall(r"[\w'’]+", t)]
+        return {tuple(w[i : i + 3]) for i in range(len(w) - 2)}
+
+    mine = runs(a)
+    return len(mine & runs(b)) / len(mine) if mine else 0.0
+
+
+def check_x(text: str, role: str = "", linkedin: str = "") -> list[RuleResult]:
     t = text.strip()
     if not t:
         return []
@@ -547,8 +601,11 @@ def check_x(text: str, role: str = "") -> list[RuleResult]:
         else RuleResult("x_no_bait", "pass", "No engagement-bait prompts.")
     )
     link = _URL.search(t)
+    links = _URL.findall(t)
     if not link:
         out.append(RuleResult("x_no_link", "pass", "No link in the post."))
+    elif all(_X_INTERNAL.match(u) for u in links):
+        out.append(RuleResult("x_no_link", "pass", "Links only to an X Article, which carries no reach penalty."))
     elif role == "link":
         out.append(
             RuleResult("x_no_link", "warn", "The launch post carries the link; expect lower reach.", "Test posting the link as a reply to your own post.", _short(link.group(0)))
@@ -567,6 +624,20 @@ def check_x(text: str, role: str = "") -> list[RuleResult]:
         if tags <= 1
         else RuleResult("x_hashtags", "warn", f"{tags} hashtags.", "Keep one hashtag at most.")
     )
+    if linkedin.strip():
+        shared = _overlap(t, linkedin)
+        if shared >= 0.8:
+            out.append(
+                RuleResult("x_not_copy", "fail", "This is the LinkedIn post cut down.", "Rewrite it for X: one sharp, debatable point for builders, in new words.", _short(t))
+            )
+        elif shared >= 0.5:
+            out.append(
+                RuleResult(
+                    "x_not_copy", "warn", "Much of this repeats the LinkedIn post word for word.", "Say it a different way for X: sharper, and aimed at builders.", _short(t)
+                )
+            )
+        else:
+            out.append(RuleResult("x_not_copy", "pass", "Written for X rather than copied from LinkedIn."))
     return out
 
 
