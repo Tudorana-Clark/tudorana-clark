@@ -26,7 +26,7 @@ function rank(a: CriterionScore, b: CriterionScore): number {
 
 /**
  * Shows how closely copy follows the evidence-based rubric, what to fix first and why.
- * `onApply` revises the draft with one suggestion; `onApplyAll` (articles) applies them all.
+ * `onApply` revises the draft with one suggestion; `onApplyAll` applies every open suggestion in one rewrite.
  */
 export function ScorePanel({
   score,
@@ -72,6 +72,9 @@ export function ScorePanel({
   const warns = score.criteria.filter((c) => c.status === "warn").sort(rank);
   const passes = score.criteria.filter((c) => c.status === "pass").sort(rank);
   const multi = score.channels.length > 1;
+  const fixable = [...fails, ...warns].filter((c) => c.suggestion).length;
+  // With one-at-a-time fixes on offer, "all" only earns its place when there's more than one.
+  const showApplyAll = Boolean(onApplyAll) && fixable > 0 && (!onApply || fixable > 1);
 
   return (
     <div className="score" aria-busy={scoring || undefined}>
@@ -125,9 +128,9 @@ export function ScorePanel({
 
       {fails.length + warns.length > 0 ? (
         <>
-          {onApplyAll && (
+          {showApplyAll && (
             <button type="button" className="pill sm" style={{ alignSelf: "flex-start" }} onClick={onApplyAll} disabled={disabled || scoring}>
-              Apply the suggestions to the draft
+              {`Apply all ${fixable} fixes`}
             </button>
           )}
           <CriteriaList title="Fix first" items={fails} multi={multi} onApply={onApply} disabled={disabled || scoring} />

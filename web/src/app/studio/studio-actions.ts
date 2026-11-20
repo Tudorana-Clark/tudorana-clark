@@ -165,7 +165,22 @@ const writeSchema = z.object({
   source_id: z.string().nullable(),
   current: copySchema.nullable(),
   instruction: z.string().trim().max(300, "Keep the instruction short."),
+  fix_all: z.boolean().optional(),
 });
+
+function writeMessage(input: z.output<typeof writeSchema>, score: CopyScore): string {
+  if (input.fix_all) {
+    if (score.revised && score.first_total !== null) return `Every fix applied. The score went from ${score.first_total} to ${score.total}. Review, then save.`;
+    const open = score.criteria.some((c) => c.status !== "pass" && c.suggestion);
+    return open
+      ? `We tried every fix, but the rewrite scored lower than ${score.total}, so your drafts are unchanged.`
+      : `Nothing left to fix. The drafts score ${score.total}.`;
+  }
+  if (input.current) return `Revised. It now scores ${score.total}.`;
+  return score.revised && score.first_total !== null
+    ? `Drafts written and improved from ${score.first_total} to ${score.total}. Review before posting.`
+    : `Drafts written in your voice. They score ${score.total}.`;
+}
 
 export async function writePostAction(input: z.input<typeof writeSchema>): Promise<ActionResult<PostWriteResult>> {
   await requireSession();
@@ -173,13 +188,7 @@ export async function writePostAction(input: z.input<typeof writeSchema>): Promi
   if (!parsed.success) return { ok: false, error: parsed.error.issues[0]?.message ?? "Check the idea." };
   try {
     const data = await studio.write(parsed.data);
-    const { score } = data;
-    const message = parsed.data.current
-      ? `Revised. It now scores ${score.total}.`
-      : score.revised && score.first_total !== null
-        ? `Drafts written and improved from ${score.first_total} to ${score.total}. Review before posting.`
-        : `Drafts written in your voice. They score ${score.total}.`;
-    return { ok: true, data, message };
+    return { ok: true, data, message: writeMessage(parsed.data, data.score) };
   } catch (err) {
     return fail(err);
   }

@@ -4,7 +4,7 @@ from datetime import UTC, date, datetime
 from enum import StrEnum
 from typing import Annotated, Literal
 
-from pydantic import BaseModel, ConfigDict, EmailStr, Field, HttpUrl, StringConstraints, field_validator
+from pydantic import BaseModel, ConfigDict, EmailStr, Field, HttpUrl, StringConstraints, field_validator, model_validator
 
 ShortText = Annotated[str, StringConstraints(strip_whitespace=True, max_length=300)]
 Slug = Annotated[str, StringConstraints(pattern=r"^[a-z0-9]+(?:-[a-z0-9]+)*$", max_length=120)]
@@ -579,6 +579,14 @@ class PostWriteRequest(BaseModel):
     source_id: str | None = None
     current: "PostCopy | None" = None
     instruction: Annotated[str, StringConstraints(strip_whitespace=True, max_length=300)] = ""
+    # Revise `current` against every open suggestion from a fresh score, instead of one instruction.
+    fix_all: bool = False
+
+    @model_validator(mode="after")
+    def _fix_all_needs_drafts(self) -> "PostWriteRequest":
+        if self.fix_all and (self.current is None or not (self.current.linkedin.strip() or self.current.x.strip())):
+            raise ValueError("Write the drafts first, then apply the fixes.")
+        return self
 
 
 class PostCopy(BaseModel):

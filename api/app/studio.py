@@ -44,6 +44,7 @@ log = logging.getLogger(__name__)
 # Start the automatic second pass only within this time of starting, and finish everything by the deadline,
 # which sits safely inside the studio's 230 s wait. If the pass runs out of time, the first version is kept.
 REVISE_BUDGET_SECONDS = 100
+FIX_ALL_LIMIT = 12  # "Apply all fixes" covers every open suggestion the rubric can raise, not just the top six
 DEADLINE_SECONDS = 200
 MINE_BATCH = 4  # pieces per click: bounds cost and keeps the request well under the gateway timeout
 VOICE_SAMPLES = 8
@@ -185,11 +186,30 @@ class StudioService:
             except NotFound:
                 source = ""  # the piece was deleted; write from the seed alone
         voice = await self.voice_text()
+        if req.fix_all and req.current is not None:
+            return await self.fix_all(req.current, req.seed, source, voice)
         copy = await self.writer.write_post(req.seed, source, voice, req.current, req.instruction)
         score = await self.engine.score_post(copy, "", voice)
         if req.current is None:
             copy, score = await self.polish(copy, score, req.seed, source, voice, "", started)
         return PostWriteResult(**copy.model_dump(), score=score)
+
+    async def fix_all(self, current: PostCopy, seed: str, source: str, voice: str) -> PostWriteResult:
+        """Rescore the drafts, revise them against every open suggestion in one pass, and keep the better version.
+
+        The score is taken fresh rather than trusted from the client, so the fixes match the text being revised.
+        `score.revised` tells the caller whether the rewrite was kept.
+        """
+        score = await self.engine.score_post(current, "", voice)
+        brief = fix_list(score, limit=FIX_ALL_LIMIT)
+        if not brief:
+            return PostWriteResult(**current.model_dump(), score=score)
+        revised = await self.writer.write_post(seed, source, voice, current, brief)
+        again = await self.engine.score_post(revised, "", voice)
+        log.info("post_fix_all", extra={"before": score.total, "after": again.total})
+        if again.total >= score.total:
+            return PostWriteResult(**revised.model_dump(), score=again.model_copy(update={"revised": True, "first_total": score.total}))
+        return PostWriteResult(**current.model_dump(), score=score)
 
     async def polish(self, copy: PostCopy, score: CopyScore, seed: str, source: str, voice: str, role: str, started: float) -> tuple[PostCopy, CopyScore]:
         """One automatic revision aimed at the weakest criteria. Keeps whichever version scores higher."""

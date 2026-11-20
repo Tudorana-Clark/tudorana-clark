@@ -89,21 +89,26 @@ export function ContentScorePanel({
     }
   }
 
-  async function applySocial(c: CriterionScore) {
+  /** Revise the social posts with one suggestion, or (`c` null) with every open suggestion from a fresh score. */
+  async function applySocial(c: CriterionScore | null) {
     setBusy("social");
     try {
-      const where = c.channel === "x" ? "In the X post: " : "In the LinkedIn post: ";
+      const where = c?.channel === "x" ? "In the X post: " : "In the LinkedIn post: ";
       const res = await writePostAction({
         seed: (excerpt || title || "This piece").slice(0, 2000),
         source_id: contentId,
         current: { linkedin, x, hook: "" },
-        instruction: `${where}${c.suggestion}`.slice(0, 300),
+        instruction: c ? `${where}${c.suggestion}`.slice(0, 300) : "",
+        fix_all: c === null,
       });
       if (!res.ok) return notify("error", res.error);
       onSocial({ linkedin: res.data.linkedin, x: res.data.x });
       setScores((s) => (s ? { ...s, social: res.data.score } : s));
       setSocialSnap({ linkedin: res.data.linkedin, x: res.data.x });
-      notify("success", `${c.channel === "x" ? "X" : "LinkedIn"} post revised. It now scores ${res.data.score.total}. Review, then save.`);
+      notify(
+        "success",
+        c ? `${c.channel === "x" ? "X" : "LinkedIn"} post revised. It now scores ${res.data.score.total}. Review, then save.` : (res.message ?? "Fixes applied. Review, then save."),
+      );
     } catch {
       notify("error", "We couldn’t reach the studio server. Check your connection and try again.");
     } finally {
@@ -159,6 +164,7 @@ export function ContentScorePanel({
             scoring={busy === "score" || busy === "social"}
             onRescore={hasBody ? () => void score() : undefined}
             onApply={(c) => void applySocial(c)}
+            onApplyAll={hasSocial ? () => void applySocial(null) : undefined}
             disabled={disabled || working}
             emptyText={hasSocial ? "Score the piece to see how its LinkedIn and X posts measure up." : "Write or generate the LinkedIn and X posts below, then score them."}
           />

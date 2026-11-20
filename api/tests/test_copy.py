@@ -173,3 +173,36 @@ def test_saved_score_goes_stale_when_the_text_changes(client: TestClient) -> Non
     assert post["score"]["stale"] is False and post["score"]["total"] == score["total"]
     edited = client.put(f"/v1/admin/studio/posts/{post['id']}", json={"seed": "Data first", "linkedin": GOOD_LINKEDIN + " More.", "score": score}, headers=ADMIN).json()
     assert edited["score"]["stale"] is True
+
+
+def test_fix_all_needs_drafts(client: TestClient) -> None:
+    res = client.post("/v1/admin/studio/posts/write", json={"seed": "Data first", "fix_all": True, "current": {"linkedin": " ", "x": ""}}, headers=ADMIN)
+    assert res.status_code == 422 and "drafts first" in res.text
+
+
+def test_fix_all_rescores_revises_and_keeps_the_better_version(client: TestClient) -> None:
+    weak = {"linkedin": "Excited to announce our new AI offer. Check it out!", "x": "New AI offer. Link in bio!", "hook": ""}
+    before = client.post("/v1/admin/studio/posts/score", json={"linkedin": weak["linkedin"], "x": weak["x"]}, headers=ADMIN).json()
+    res = client.post("/v1/admin/studio/posts/write", json={"seed": "New AI offer", "current": weak, "fix_all": True}, headers=ADMIN)
+    assert res.status_code == 200, res.text
+    data = res.json()
+    if data["score"]["revised"]:
+        assert data["score"]["first_total"] == before["total"] and data["score"]["total"] >= before["total"]
+        assert data["linkedin"] != weak["linkedin"]
+    else:
+        # The rewrite scored lower, so the drafts come back untouched with their fresh score.
+        assert data["linkedin"] == weak["linkedin"] and data["score"]["total"] == before["total"]
+
+
+def test_fix_all_with_nothing_to_fix_returns_the_drafts_unchanged(client: TestClient) -> None:
+    good = {"linkedin": GOOD_LINKEDIN, "x": "", "hook": ""}
+    data = client.post("/v1/admin/studio/posts/write", json={"seed": "Data first", "current": good, "fix_all": True}, headers=ADMIN).json()
+    assert data["linkedin"] == GOOD_LINKEDIN and data["score"]["revised"] is False
+
+
+async def test_fix_list_limit_widens_the_brief() -> None:
+    copy = PostCopy(linkedin="Excited to announce our new thing! Comment YES below https://a.co", x="New thing! Link in bio")
+    weak = await CopyEngine(OfflineCopyJudge()).score_post(copy, "", "")
+    open_items = [c for c in weak.criteria if c.status != "pass" and c.suggestion]
+    assert fix_list(weak, limit=12).count("\n- ") == min(len(open_items), 12)
+    assert fix_list(weak).count("\n- ") == min(len(open_items), 6)

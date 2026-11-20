@@ -99,14 +99,15 @@ export function PostEditor({ initial, experiments = [] }: { initial: Post | Post
     return () => clearTimeout(t);
   }, [toast]);
 
-  async function write(refine?: string) {
+  async function write(refine?: string, fixAll = false) {
     setWriting(true);
     try {
       const res = await writePostAction({
         seed: form.seed,
         source_id: form.source?.content_id ?? null,
-        current: refine !== undefined ? { linkedin: form.linkedin, x: form.x, hook: form.hook } : null,
+        current: refine !== undefined || fixAll ? { linkedin: form.linkedin, x: form.x, hook: form.hook } : null,
         instruction: refine ?? "",
+        fix_all: fixAll,
       });
       if (!res.ok) return setToast({ tone: "error", text: res.error });
       const { linkedin, x, hook, score } = res.data;
@@ -309,6 +310,7 @@ export function PostEditor({ initial, experiments = [] }: { initial: Post | Post
               scoring={scoring || writing}
               onRescore={hasDrafts ? () => void rescore() : undefined}
               onApply={applyFix}
+              onApplyAll={hasDrafts ? () => void write(undefined, true) : undefined}
               disabled={busy}
               emptyText={hasDrafts ? "These drafts haven’t been scored yet." : "Write drafts to see how they score against the evidence, with fixes you can apply in one click."}
             />
